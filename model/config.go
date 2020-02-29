@@ -5,10 +5,12 @@ type Config struct {
 	PullProxySource    PullProxySources `yaml:"pull-proxy-source"`
 	Port               int              `yaml:"port,omitempty"`
 	SocksPort          int              `yaml:"socks-port,omitempty"`
-	AllowLan           bool             `yaml:"allow-lan,omitempty"`
+	AllowLan           bool             `yaml:"allow-lan"`
 	Mode               string           `yaml:"mode,omitempty"`
 	LogLevel           string           `yaml:"log-level,omitempty"`
 	ExternalController string           `yaml:"external-controller,omitempty"`
+	ExternalUi         string           `yaml:"external-ui,omitempty"`
+	Secret             string           `yaml:"secret,omitempty"`
 	Experimental       Experimental     `yaml:"experimental,omitempty"`
 	Dns                Dns              `yaml:"dns,omitempty"`
 	FallbackFilter     FallbackFilter   `yaml:"fallback-filter,omitempty"`     // 这个会最终合并到dns 里面去

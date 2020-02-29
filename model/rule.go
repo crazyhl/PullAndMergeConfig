@@ -4,7 +4,7 @@ type Rule struct {
 	Port               int            `yaml:"port,omitempty"`
 	SocksPort          int            `yaml:"socks-port,omitempty"`
 	RedirPort          int            `yaml:"redir-port,omitempty"`
-	AllowLan           bool           `yaml:"allow-lan,omitempty"`
+	AllowLan           bool           `yaml:"allow-lan"`
 	BindAddress        string         `yaml:"bind-address,omitempty"`
 	Mode               string         `yaml:"mode,omitempty"`
 	LogLevel           string         `yaml:"log-level,omitempty"`

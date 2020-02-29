@@ -5,7 +5,7 @@ import "errors"
 // 拉取代理源
 type PullProxySource struct {
 	Name string
-	Url string
+	Url  string
 }
 
 type PullProxySources []PullProxySource

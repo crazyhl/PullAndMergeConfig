@@ -2,8 +2,8 @@
 # 这个就是你要采用规则的源地址，会把代理填入这里面，然后把要覆盖的参数覆盖进去
 
 base-rule:
-#  - name: name
-#    url: url
+  #  - name: name
+  #    url: url
   # Hackl0us https://github.com/Hackl0us/SS-Rule-Snippet
   - name: Hackl0us
     url: "https://raw.githubusercontent.com/Hackl0us/SS-Rule-Snippet/master/LAZY_RULES/clash.yaml"

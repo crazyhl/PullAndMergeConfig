@@ -3,14 +3,14 @@ package model
 import "errors"
 
 // 基础规则源
-type BaseRule struct {
+type ConfigBaseRule struct {
 	Name string
-	Url string
+	Url  string
 }
 
-type BaseRules []BaseRule
+type ConfigBaseRules []ConfigBaseRule
 
-func (rules BaseRules) HasItem(name string) (interface{}, error) {
+func (rules ConfigBaseRules) HasItem(name string) (interface{}, error) {
 	for _, rule := range rules {
 		if rule.Name == name {
 			return rule, nil

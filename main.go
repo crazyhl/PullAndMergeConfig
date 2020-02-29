@@ -16,70 +16,77 @@ import (
 )
 
 func main() {
-	//	vmessStr := "123"
-	//	vmessByteArr, err := base64.URLEncoding.DecodeString(vmessStr)
-	//	fmt.Println(string(vmessByteArr))
-	//	fmt.Println("---" + err.Error() + "------")
-	// 定义一波颜色
+	// 定义输出颜色
 	hiYellowColor := color.New(color.FgHiYellow)
 	hiRedColor := color.New(color.FgHiRed)
 	cyanColor := color.New(color.FgCyan)
 	hiMagenta := color.New(color.FgHiMagenta)
 	// 读入配置文件
-	hiYellowColor.Println("开始加载配置文件...")
-	configFile, err := ioutil.ReadFile("./config.yaml")
-	if err != nil {
-		hiRedColor.Printf("error: %v\n", err)
+	_, _ = hiYellowColor.Println("开始加载配置文件...")
+	configFile, readConfigFileErr := ioutil.ReadFile("./config.yaml")
+	if readConfigFileErr != nil {
+		_, _ = hiRedColor.Printf("error: %v\n", readConfigFileErr)
+		_, _ = hiRedColor.Println("读入配置文件失败了，检查配置文件是否存在")
 		return
 	}
-	parseConfig := model.Config{}
-	err = yaml.Unmarshal(configFile, &parseConfig)
-	if err != nil {
-		hiRedColor.Printf("error: %v\n", err)
+	// 解析自定义的配置文件
+	customConfig := model.Config{}
+	unmarshalConfigErr := yaml.Unmarshal(configFile, &customConfig)
+	if unmarshalConfigErr != nil {
+		_, _ = hiRedColor.Printf("error: %v\n", unmarshalConfigErr)
+		_, _ = hiRedColor.Println("解析配置文件失败了，看看格式是不是不正确了")
 		return
 	}
-
-	if len(parseConfig.ConfigBaseRule) <= 0 {
-		hiRedColor.Println("基础规则源不存在，请填写配置文件后在获取")
+	// 判断是否配置了要获取的根基配置文件是否存在
+	if len(customConfig.ConfigBaseRule) <= 0 {
+		_, _ = hiRedColor.Println("基础规则源不存在，请填写配置文件后在获取")
 		return
 	}
-	//cyanColor.Println(parseConfig.FallbackFilter)
-	//return
 	// 获取基础配置列表
-	baseRules := parseConfig.ConfigBaseRule
+	baseRules := customConfig.ConfigBaseRule
 	// 先获取第一个配置当做默认配置
-	getRule := baseRules[0]
+	configBaseRule := baseRules[0]
 	// 获取参数
 	inputArgs := os.Args
 	if len(inputArgs) < 2 {
-		cyanColor.Println("没有输入任何参数，将获取第一个规则当做拉取规则，规则名称： " + getRule.Name)
+		_, _ = cyanColor.Println("没有输入任何参数，将获取第一个规则当做拉取规则，规则名称： " + configBaseRule.Name)
 	}
 	// 如果有传入参数，就根据参数获取拉取规则的配置
 	if len(inputArgs) > 1 {
 		inputArgBaseRuleName := inputArgs[1]
 		rule, err := getItems(baseRules, inputArgBaseRuleName)
 		if err != nil {
-			hiRedColor.Println(err)
+			_, _ = hiRedColor.Println(err)
 			return
 		}
-		parseRule, ruleErr := rule.(model.ConfigBaseRule)
-		if !ruleErr {
-			hiRedColor.Println("基础规则源解析失败，请检查配置文件！")
+		// 通过断言进行类型转换，把空接口转换为我们的model类型
+		parseConfigBaseRule, assertErr := rule.(model.ConfigBaseRule)
+		if !assertErr {
+			_, _ = hiRedColor.Println(assertErr)
+			_, _ = hiRedColor.Println("基础规则源解析失败，请检查配置文件！")
 			return
 		}
-		getRule = parseRule
-		cyanColor.Println("采用输入的规则，规则名称： " + getRule.Name)
+		configBaseRule = parseConfigBaseRule
+		_, _ = cyanColor.Println("采用输入的规则，规则名称： " + configBaseRule.Name)
 	}
 	// 获取 最新的规则
-	hiYellowColor.Println("开始拉取基础规则...")
-	baseRuleBody, baseRuleErr := httpGet(getRule.Url)
+	_, _ = hiYellowColor.Println("开始拉取基础规则")
+	baseRuleBody, baseRuleErr := httpGet(configBaseRule.Url)
 	if baseRuleErr != nil {
-		hiRedColor.Println(baseRuleErr)
+		_, _ = hiRedColor.Println(baseRuleErr)
+		_, _ = hiRedColor.Println("拉取基础规则失败，请检查网络！！！！")
+		return
+	}
+	readyToWriteRule := model.Rule{}
+	unmarshalReadyToWriteRuleErr := yaml.Unmarshal(baseRuleBody, &readyToWriteRule)
+	if unmarshalReadyToWriteRuleErr != nil {
+		_, _ = hiRedColor.Printf("error: %v\n", unmarshalReadyToWriteRuleErr)
+		_, _ = hiRedColor.Println("解析基础规则失败，请检查 url 是否正确 ！！！")
 		return
 	}
 	// 规则获取完成后多线程拉取用户订阅
-	hiYellowColor.Println("开始拉取订阅代理信息...")
-	pullProxySourceCunt := len(parseConfig.PullProxySource)
+	_, _ = hiYellowColor.Println("开始拉取订阅 Proxy 信息")
+	pullProxySourceCunt := len(customConfig.PullProxySource)
 	wg := sync.WaitGroup{}
 	wg.Add(pullProxySourceCunt)
 	proxyArr := make(map[string][]model.Proxy)
@@ -89,137 +96,102 @@ func main() {
 			proxyArr[source.Name] = nil
 			proxyBody, proxyErr := httpGet(source.Url)
 			if baseRuleErr != nil {
-				hiRedColor.Println(proxyErr)
-				hiRedColor.Println(source.Name + "获取节点信息失败，请检查网络！！！")
+				_, _ = hiRedColor.Println(proxyErr)
+				_, _ = hiRedColor.Println(source.Name + "获取订阅 Proxy 信息，请检查网络！！！")
 				return
 			}
 
 			decodeProxy, decodeProxyErr := base64.URLEncoding.DecodeString(string(proxyBody))
 			if decodeProxyErr != nil {
 				// base64 解析失败了，尝试解析 yaml
-				hiMagenta.Println(source.Name + "订阅不是 base64 文件，尝试用yaml解析")
+				_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息不是 base64 文件，尝试用yaml解析")
 				proxyRule := model.Rule{}
-				err = yaml.Unmarshal(proxyBody, &proxyRule)
-				if err != nil {
-					hiRedColor.Println(source.Name + "订阅 yaml 也解析失败了")
+				unmarshalProxyRuleErr := yaml.Unmarshal(proxyBody, &proxyRule)
+				if unmarshalProxyRuleErr != nil {
+					_, _ = hiRedColor.Println(unmarshalProxyRuleErr)
+					_, _ = hiRedColor.Println(source.Name + "订阅 Proxy 信息 yaml 解析失败,请检查订阅url是否正确")
 					return
 				}
 				// 解析成功了赋值
 				proxyArr[source.Name] = proxyRule.Proxy
-				hiMagenta.Println(source.Name + "获取节点信息成功，是 yaml 格式的。")
+				_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， yaml 格式。")
 				return
 			}
-			base64DecodeProxyArr := strings.Split(string(decodeProxy), "\n")
-			var base64ProxyArr []model.Proxy
-			for _, proxyStr := range base64DecodeProxyArr {
-				if strings.HasPrefix(proxyStr, "vmess://") {
-					proxyStr = proxyStr[8:]
-					vmessProxy, vmessProxyErr := base64.URLEncoding.DecodeString(proxyStr)
-
-					if vmessProxyErr == nil {
-						vmessProxyModel := model.Base64VmessProxy{}
-						err = json.Unmarshal(vmessProxy, &vmessProxyModel)
-						if err != nil {
-							hiRedColor.Println(err)
-							hiRedColor.Println(source.Name + " vmess 解析失败了")
-							return
-						}
-						alertId, _ := strconv.Atoi(vmessProxyModel.AlterId)
-
-						base64ProxyArr = append(base64ProxyArr, model.Proxy{
-							Name:           vmessProxyModel.Name,
-							Type:           "vmess",
-							Server:         vmessProxyModel.Server,
-							Port:           vmessProxyModel.Port,
-							Cipher:         "auto",
-							Uuid:           vmessProxyModel.Uuid,
-							AlterId:        alertId,
-							Tls:            vmessProxyModel.Tls != "",
-							SkipCertVerify: vmessProxyModel.Tls != "",
-							Network:        vmessProxyModel.Network,
-							WsPath:         vmessProxyModel.WsPath,
-							WsHeaders: yaml.MapSlice{
-								yaml.MapItem{
-									Key:   "Host",
-									Value: vmessProxyModel.Host,
-								},
-							},
-						})
-					}
-				}
+			_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
+			base64ProxyArr, parseBase64ProxyArr := parseBase64ProxyArr(decodeProxy)
+			if parseBase64ProxyArr != nil {
+				_, _ = hiRedColor.Println(parseBase64ProxyArr)
+				_, _ = hiRedColor.Println(source.Name + "订阅 Proxy 信息 base64 解析失败")
+				return
 			}
 			proxyArr[source.Name] = base64ProxyArr
-
-		}(parseConfig.PullProxySource[i])
+			_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， base64 格式。")
+			return
+		}(customConfig.PullProxySource[i])
 	}
 	wg.Wait()
-	hiYellowColor.Println("开始合并配置文件...")
+	_, _ = hiYellowColor.Println("开始合并配置文件")
 	// 写出规则文件
-	parseRule := model.Rule{}
-	err = yaml.Unmarshal(baseRuleBody, &parseRule)
-	if err != nil {
-		hiRedColor.Printf("error: %v\n", err)
-		return
-	}
+
 	// 合并config 参数
-	if parseConfig.Port > 0 {
-		parseRule.Port = parseConfig.Port
+	if customConfig.Port > 0 {
+		readyToWriteRule.Port = customConfig.Port
 	}
 
-	if parseConfig.SocksPort > 0 {
-		parseRule.SocksPort = parseConfig.SocksPort
+	if customConfig.SocksPort > 0 {
+		readyToWriteRule.SocksPort = customConfig.SocksPort
 	}
 
-	if parseConfig.AllowLan {
-		parseRule.AllowLan = parseConfig.AllowLan
+	if customConfig.AllowLan {
+		readyToWriteRule.AllowLan = customConfig.AllowLan
 	}
 
-	if parseConfig.Mode != "" {
-		parseRule.Mode = parseConfig.Mode
+	if customConfig.Mode != "" {
+		readyToWriteRule.Mode = customConfig.Mode
 	}
 
-	if parseConfig.LogLevel != "" {
-		parseRule.LogLevel = parseConfig.LogLevel
+	if customConfig.LogLevel != "" {
+		readyToWriteRule.LogLevel = customConfig.LogLevel
 	}
 
-	if parseConfig.ExternalController != "" {
-		parseRule.ExternalController = parseConfig.ExternalController
+	if customConfig.ExternalController != "" {
+		readyToWriteRule.ExternalController = customConfig.ExternalController
 	}
 
-	if parseConfig.ExternalUi != "" {
-		parseRule.ExternalUi = parseConfig.ExternalUi
+	if customConfig.ExternalUi != "" {
+		readyToWriteRule.ExternalUi = customConfig.ExternalUi
 	}
 
-	if parseConfig.Secret != "" {
-		parseRule.ExternalUi = parseConfig.Secret
+	if customConfig.Secret != "" {
+		readyToWriteRule.ExternalUi = customConfig.Secret
 	}
 
-	if parseConfig.Experimental.IgnoreResolveFail == true {
-		parseRule.Experimental = parseConfig.Experimental
+	if customConfig.Experimental.IgnoreResolveFail == true {
+		readyToWriteRule.Experimental = customConfig.Experimental
 	}
 
-	if parseRule.FallbackFilter.GeoIp == true {
-		parseRule.Dns.FallbackFilter = parseRule.FallbackFilter
+	if readyToWriteRule.FallbackFilter.GeoIp == true {
+		readyToWriteRule.Dns.FallbackFilter = readyToWriteRule.FallbackFilter
 	}
 
-	if parseConfig.Dns.EnableDns == true {
-		parseRule.Dns = parseConfig.Dns
+	if customConfig.Dns.EnableDns == true {
+		readyToWriteRule.Dns = customConfig.Dns
 	}
 
-	if parseConfig.FallbackFilter.GeoIp == true {
-		parseRule.Dns.FallbackFilter = parseConfig.FallbackFilter
+	if customConfig.FallbackFilter.GeoIp == true {
+		readyToWriteRule.Dns.FallbackFilter = customConfig.FallbackFilter
 	}
 
-	if len(parseConfig.CfwBypass) > 0 {
-		parseRule.CfwBypass = parseConfig.CfwBypass
+	if len(customConfig.CfwBypass) > 0 {
+		readyToWriteRule.CfwBypass = customConfig.CfwBypass
 	}
 
-	if parseConfig.CfwLatencyTimeout > 0 {
-		parseRule.CfwLatencyTimeout = parseConfig.CfwLatencyTimeout
+	if customConfig.CfwLatencyTimeout > 0 {
+		readyToWriteRule.CfwLatencyTimeout = customConfig.CfwLatencyTimeout
 	}
 
-	if len(parseConfig.Rule) > 0 {
-		parseRule.Rule = append(parseRule.Rule, parseRule.Rule...)
+	if len(customConfig.Rule) > 0 {
+		readyToWriteRule.Rule = append(customConfig.Rule, readyToWriteRule.Rule...)
 	}
 
 	var writeProxyGroupItemNameArr []string
@@ -233,32 +205,38 @@ func main() {
 		}
 	}
 
-	if len(parseConfig.ProxyGroup) > 0 {
-		for index, pGroup := range parseConfig.ProxyGroup {
+	if len(customConfig.ProxyGroup) > 0 {
+		for index, pGroup := range customConfig.ProxyGroup {
 			writeProxyGroupItemNameArr = append(writeProxyGroupItemNameArr, pGroup.Name)
-			parseConfig.ProxyGroup[index].Proxies = writeProxyName
+			customConfig.ProxyGroup[index].Proxies = writeProxyName
 		}
 	}
 	writeProxyName = append(writeProxyGroupItemNameArr, writeProxyName...)
-	parseConfig.ProxyGroup = append(parseConfig.ProxyGroup, model.ProxyGroup{
+	customConfig.ProxyGroup = append(customConfig.ProxyGroup, model.ProxyGroup{
 		Name:    "Proxy",
 		Type:    "select",
 		Proxies: writeProxyName,
 	})
-	parseRule.Proxy = writeProxy
-	parseRule.ProxyGroup = parseConfig.ProxyGroup
+	readyToWriteRule.Proxy = writeProxy
+	readyToWriteRule.ProxyGroup = customConfig.ProxyGroup
 
-	d, _ := yaml.Marshal(&parseRule)
+	marshalRule, _ := yaml.Marshal(&readyToWriteRule)
 
-	f, err := os.Create("./" + getRule.Name + ".yaml")
-	defer f.Close()
+	f, err := os.Create("./" + configBaseRule.Name + ".yaml")
 	if err != nil {
-		hiRedColor.Println(err.Error())
+		_, _ = hiRedColor.Println(err)
+		_, _ = hiRedColor.Println("创建写出文件失败,请检查是否存在同名文件！！！")
 	} else {
-		_, err = f.Write(d)
+		defer f.Close()
 
+		_, err = f.Write(marshalRule)
+		if err != nil {
+			_, _ = hiRedColor.Println(err)
+			_, _ = hiRedColor.Println("写入文件失败，请检查报错信息！！！")
+		} else {
+			_, _ = hiYellowColor.Println("配置文件写出成功，快复制到 clash 的配置文件夹使用吧!!!")
+		}
 	}
-	//fmt.Printf("--- m dump:\n%s\n\n", string(d))
 }
 
 func httpGet(url string) ([]byte, error) {
@@ -277,4 +255,49 @@ func httpGet(url string) ([]byte, error) {
 // 通用的获取 items 方法
 func getItems(items my_interface.HasItemInterface, name string) (interface{}, error) {
 	return items.HasItem(name)
+}
+
+func parseBase64ProxyArr(base64ProxyStr []byte) ([]model.Proxy, error) {
+	// 把base64 换行
+	proxyStrArr := strings.Split(string(base64ProxyStr), "\n")
+	var proxyArr []model.Proxy
+	// 遍历分割的base 64字符串
+	for _, proxyStr := range proxyStrArr {
+		// 判断是否已vmess开头，目前仅支持vmess
+		if strings.HasPrefix(proxyStr, "vmess://") {
+			proxyStr = proxyStr[8:]
+			vmessProxy, vmessProxyErr := base64.URLEncoding.DecodeString(proxyStr)
+
+			if vmessProxyErr == nil {
+				vmessProxyModel := model.Base64VmessProxy{}
+				unmarshalVmessProxyErr := json.Unmarshal(vmessProxy, &vmessProxyModel)
+				if unmarshalVmessProxyErr != nil {
+					return nil, unmarshalVmessProxyErr
+				}
+				alertId, _ := strconv.Atoi(vmessProxyModel.AlterId)
+
+				proxyArr = append(proxyArr, model.Proxy{
+					Name:           vmessProxyModel.Name,
+					Type:           "vmess",
+					Server:         vmessProxyModel.Server,
+					Port:           vmessProxyModel.Port,
+					Cipher:         "auto",
+					Uuid:           vmessProxyModel.Uuid,
+					AlterId:        alertId,
+					Tls:            vmessProxyModel.Tls != "",
+					SkipCertVerify: vmessProxyModel.Tls != "",
+					Network:        vmessProxyModel.Network,
+					WsPath:         vmessProxyModel.WsPath,
+					WsHeaders: yaml.MapSlice{
+						yaml.MapItem{
+							Key:   "Host",
+							Value: vmessProxyModel.Host,
+						},
+					},
+				})
+			}
+		}
+	}
+
+	return proxyArr, nil
 }

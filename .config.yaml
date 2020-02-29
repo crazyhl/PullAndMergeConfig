@@ -1,0 +1,96 @@
+# 基础规则源
+# 这个就是你要采用规则的源地址，会把代理填入这里面，然后把要覆盖的参数覆盖进去
+
+base-rule:
+#  - name: name
+#    url: url
+  # Hackl0us https://github.com/Hackl0us/SS-Rule-Snippet
+  - name: Hackl0us
+    url: "https://raw.githubusercontent.com/Hackl0us/SS-Rule-Snippet/master/LAZY_RULES/clash.yaml"
+  # ConnersHua https://github.com/ConnersHua/Profiles/tree/master
+  - name: ConnersHua
+    url: "https://raw.githubusercontent.com/ConnersHua/Profiles/master/Clash/Pro.yaml"
+
+
+# 拉取代理源
+# 这个就是你的订阅地址，会从这个地址提取代理信息添加到上面的基础规则源里面
+
+pull-proxy-source:
+#  按照下面的输入方式填写
+#  - name: name
+#    url: url
+
+# 下面的参数都会覆盖到最终生成的配置文件里面去
+
+# HTTP 代理端口
+port: 7890
+
+# SOCKS5 代理端口
+socks-port: 7891
+
+# 允许局域网的连接（可用来共享代理）
+allow-lan: false
+# bind-address: "*"
+# 此功能仅在 allow-lan 设置为 true 时生效，支持三种参数：
+# "*"                           绑定所有的 IP 地址
+# 192.168.122.11                绑定一个的 IPv4 地址
+# "[aaaa::a8aa:ff:fe09:57d8]"   绑定一个 IPv6 地址
+
+# 规则模式：Rule（规则） / Global（全局代理）/ Direct（全局直连）
+mode: Rule
+
+# 设置日志输出级别 (默认级别：silent，即不输出任何内容，以避免因日志内容过大而导致程序内存溢出）。
+# 5 个级别：silent / info / warning / error / debug。级别越高日志输出量越大，越倾向于调试，若需要请自行开启。
+log-level: silent
+
+# clash 的 RESTful API
+external-controller: 127.0.0.1:9090
+
+# 您可以将静态网页资源（如 clash-dashboard）放置在一个目录中，clash 将会服务于 `${API}/ui`
+# 参数应填写配置目录的相对路径或绝对路径。
+# external-ui: folder
+
+# RESTful API 的口令 (可选)
+# secret: ""
+
+# 实验性功能
+experimental:
+  ignore-resolve-fail: true # 忽略 DNS 解析失败，默认值为 true
+
+# 本地 SOCKS5 / HTTP(S) 服务认证
+# authentication:
+#  - "user1:pass1"
+#  - "user2:pass2"
+
+# # 实验性功能 hosts, 支持通配符 (例如 *.clash.dev 甚至 *.foo.*.example.com)
+# # 静态的域名 比 通配域名 具有更高的优先级 (foo.example.com 优先于 *.example.com)
+# # 注意: hosts 在 fake-ip 模式下不生效
+# hosts:
+#   '*.clash.dev': 127.0.0.1
+#   'alpha.clash.dev': '::1'
+
+dns:
+  enable: true
+  ipv6: false
+  # listen: 0.0.0.0:53
+  # enhanced-mode: redir-host # 或 fake-ip
+  # # fake-ip-range: 198.18.0.1/16 # 如果你不知道这个参数的作用，请勿修改
+  # fake-ip-filter: # fake-ip 白名单列表
+  #   - '*.lan'
+  #   - localhost.ptlogin2.qq.com
+
+  nameserver:
+    - 1.2.4.8
+    - 114.114.114.114
+    - 223.5.5.5
+    - tls://dns.rubyfish.cn:853
+    #- https://dns.rubyfish.cn/dns-query
+
+  fallback: # 与 nameserver 内的服务器列表同时发起请求，当规则符合 GEOIP 在 CN 以外时，fallback 列表内的域名服务器生效。
+    - tls://dns.rubyfish.cn:853
+    - tls://1.0.0.1:853
+    - tls://dns.google:853
+
+    #- https://dns.rubyfish.cn/dns-query
+    #- https://cloudflare-dns.com/dns-query
+    #- https://dns.google/dns-query

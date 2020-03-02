@@ -113,7 +113,21 @@ func main() {
 					return
 				}
 				// 解析成功了赋值
-				proxyArr[source.Name] = proxyRule.Proxy
+			filterStart:
+				for _, proxy := range proxyRule.Proxy {
+					for _, filterName := range customConfig.FilterProxyName {
+						if filterName == proxy.Name {
+							continue filterStart
+						}
+					}
+					for _, server := range customConfig.FilterProxyServer {
+						hiRedColor.Println(server + ": " + proxy.Server)
+						if server == proxy.Server {
+							continue filterStart
+						}
+					}
+					proxyArr[source.Name] = append(proxyArr[source.Name], proxy)
+				}
 				_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， yaml 格式。")
 				return
 			}
@@ -124,7 +138,20 @@ func main() {
 				_, _ = hiRedColor.Println(source.Name + "订阅 Proxy 信息 base64 解析失败")
 				return
 			}
-			proxyArr[source.Name] = base64ProxyArr
+		base64filterStart:
+			for _, proxy := range base64ProxyArr {
+				for _, filterName := range customConfig.FilterProxyName {
+					if filterName == proxy.Name {
+						continue base64filterStart
+					}
+				}
+				for _, server := range customConfig.FilterProxyServer {
+					if server == proxy.Server {
+						continue base64filterStart
+					}
+				}
+				proxyArr[source.Name] = append(proxyArr[source.Name], proxy)
+			}
 			_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， base64 格式。")
 			return
 		}(customConfig.PullProxySource[i])

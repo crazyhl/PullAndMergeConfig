@@ -11,6 +11,12 @@ base-rule:
   - name: ConnersHua
     url: "https://raw.githubusercontent.com/ConnersHua/Profiles/master/Clash/Pro.yaml"
 
+# 过滤的节点 name
+filter-proxy-name:
+  - "美GIA 88倍|烧流量首选"
+
+# 过滤的节点 server
+filter-proxy-server:
 
 # 拉取代理源
 # 这个就是你的订阅地址，会从这个地址提取代理信息添加到上面的基础规则源里面

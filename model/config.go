@@ -3,6 +3,8 @@ package model
 type Config struct {
 	ConfigBaseRule     ConfigBaseRules  `yaml:"base-rule"`
 	PullProxySource    PullProxySources `yaml:"pull-proxy-source"`
+	FilterProxyName    []string         `yaml:"filter-proxy-name,omitempty"`
+	FilterProxyServer  []string         `yaml:"filter-proxy-server,omitempty"`
 	Port               int              `yaml:"port,omitempty"`
 	SocksPort          int              `yaml:"socks-port,omitempty"`
 	AllowLan           bool             `yaml:"allow-lan"`

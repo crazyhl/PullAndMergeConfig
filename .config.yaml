@@ -13,16 +13,17 @@ base-rule:
 
 # 过滤的节点 name
 filter-proxy-name:
-  - "美GIA 88倍|烧流量首选"
+#  - "名称 name"
 
 # 过滤的节点 server
 filter-proxy-server:
+#  - "server"
 
 # 拉取代理源
 # 这个就是你的订阅地址，会从这个地址提取代理信息添加到上面的基础规则源里面
 
 pull-proxy-source:
-  #  按照下面的输入方式填写，或者参考上面的，都是一样的
+  #  按照下面的输入方式填写
   #  - name: name
   #    url: url
 
@@ -135,29 +136,33 @@ cfw-bypass:
 cfw-latency-timeout: 5000
 
 Proxy:
-  - name: "ss1"
-    type: ss
-    server: server
-    port: 443
-    cipher: chacha20-ietf-poly1305
-    password: "password"
-    # udp: true
+#  - name: "ss1"
+#    type: ss
+#    server: server
+#    port: 443
+#    cipher: chacha20-ietf-poly1305
+#    password: "password"
+#    # udp: true
 
 Proxy Group:
-  # url-test 可以自动选择与指定 URL 测速后，延迟最短的服务器
-  - name: "auto"
-    type: url-test
-    url: 'http://www.gstatic.com/generate_204'
-    interval: 300
+#  # url-test 可以自动选择与指定 URL 测速后，延迟最短的服务器
+#  - name: "auto"
+#    type: url-test
+#    url: 'http://www.gstatic.com/generate_204'
+#    interval: 300
 
-  # fallback 可以尽量按照用户书写的服务器顺序，在确保服务器可用的情况下，自动选择服务器
-  - name: "fallback-auto"
-    type: fallback
-    url: 'http://www.gstatic.com/generate_204'
-    interval: 300
+#  # fallback 可以尽量按照用户书写的服务器顺序，在确保服务器可用的情况下，自动选择服务器
+#  - name: "fallback-auto"
+#    type: fallback
+#    url: 'http://www.gstatic.com/generate_204'
+#    interval: 300
+#
+#  # load-balance 可以使相同 eTLD 请求在同一条代理线路上
+#  - name: "load-balance"
+#    type: load-balance
+#    url: 'http://www.gstatic.com/generate_204'
+#    interval: 300
 
-  # load-balance 可以使相同 eTLD 请求在同一条代理线路上
-  - name: "load-balance"
-    type: load-balance
-    url: 'http://www.gstatic.com/generate_204'
-    interval: 300
+
+Rule:
+#  - DOMAIN-SUFFIX,163.com,DIRECT

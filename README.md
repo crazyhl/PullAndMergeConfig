@@ -34,7 +34,7 @@
 
 ### 支持的基础规则
 - [x] [Hackl0us](https://github.com/Hackl0us/SS-Rule-Snippet)
-- [x] [ConnersHua](https://github.com/ConnersHua/Profiles) 这个目前只支持了 Pro 的规则，回国规则不想支持了，毕竟我想
+- [x] [ConnersHua](https://github.com/ConnersHua/Profiles) 这个目前只支持了 Pro 的规则，回国规则不想支持了，毕竟我想大部分都是要出去的，而不是要进来
 - [ ] [lhie1](https://github.com/lhie1/Rules)
 
 ---

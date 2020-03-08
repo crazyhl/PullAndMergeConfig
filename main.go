@@ -2,17 +2,13 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"github.com/fatih/color"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"parseAndCombineMyClashRules/model"
 	"parseAndCombineMyClashRules/my_interface"
-	"strconv"
+	"parseAndCombineMyClashRules/utils"
 	"strings"
 	"sync"
 )
@@ -56,7 +52,7 @@ func main() {
 	// 如果有传入参数，就根据参数获取拉取规则的配置
 	if len(inputArgs) > 1 {
 		inputArgBaseRuleName := inputArgs[1]
-		rule, err := getItems(baseRules, inputArgBaseRuleName)
+		rule, err := my_interface.GetItems(baseRules, inputArgBaseRuleName)
 		if err != nil {
 			_, _ = hiRedColor.Println(err)
 			return
@@ -73,7 +69,7 @@ func main() {
 	}
 	// 获取 最新的规则
 	_, _ = hiYellowColor.Println("开始拉取基础规则")
-	baseRuleBody, baseRuleErr := httpGet(configBaseRule.Url)
+	baseRuleBody, baseRuleErr := utils.HttpGet(configBaseRule.Url)
 	if baseRuleErr != nil {
 		_, _ = hiRedColor.Println(baseRuleErr)
 		_, _ = hiRedColor.Println("拉取基础规则失败，请检查网络！！！！")
@@ -96,7 +92,7 @@ func main() {
 		go func(source model.PullProxySource) {
 			defer wg.Done()
 			proxyArr[source.Name] = nil
-			proxyBody, proxyErr := httpGet(source.Url)
+			proxyBody, proxyErr := utils.HttpGet(source.Url)
 			if baseRuleErr != nil {
 				_, _ = hiRedColor.Println(proxyErr)
 				_, _ = hiRedColor.Println(source.Name + "获取订阅 Proxy 信息，请检查网络！！！")
@@ -106,7 +102,7 @@ func main() {
 			decodeProxy, decodeProxyErr := base64.URLEncoding.DecodeString(string(proxyBody))
 			if decodeProxyErr != nil {
 				_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息不是 base64 文件，尝试用yaml解析")
-				yamlProxyArr, yamlProxyErr := parseYamlProxy(proxyBody, customConfig.FilterProxyName, customConfig.FilterProxyServer)
+				yamlProxyArr, yamlProxyErr := utils.ParseYamlProxy(proxyBody, customConfig.FilterProxyName, customConfig.FilterProxyServer)
 				if yamlProxyErr != nil {
 					_, _ = hiMagenta.Println(source.Name + yamlProxyErr.Error())
 					return
@@ -116,7 +112,7 @@ func main() {
 				return
 			}
 			_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
-			base64ProxyServerArr, base64ProxyServerErr := parseBase64Proxy(decodeProxy, customConfig.FilterProxyName, customConfig.FilterProxyServer)
+			base64ProxyServerArr, base64ProxyServerErr := utils.ParseBase64Proxy(decodeProxy, customConfig.FilterProxyName, customConfig.FilterProxyServer)
 			if base64ProxyServerErr != nil {
 				_, _ = hiMagenta.Println(source.Name + base64ProxyServerErr.Error())
 				return
@@ -152,134 +148,6 @@ func main() {
 			_, _ = hiYellowColor.Println("配置文件写出成功，快复制到 clash 的配置文件夹使用吧!!!")
 		}
 	}
-}
-
-func httpGet(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
-}
-
-// 通用的获取 items 方法
-func getItems(items my_interface.HasItemInterface, name string) (interface{}, error) {
-	return items.HasItem(name)
-}
-
-// 解析 base64 的代理数组信息
-func parseBase64ProxyArr(base64ProxyStr []byte) ([]model.Proxy, error) {
-	// 把base64 换行
-	proxyStrArr := strings.Split(string(base64ProxyStr), "\n")
-	var proxyArr []model.Proxy
-	// 用来过滤重名测map
-	proxyNameSet := model.MySet{}
-	// 清空来做一下初始化工作
-	proxyNameSet.Clear()
-	// 遍历分割的base 64字符串
-	for _, proxyStr := range proxyStrArr {
-		// 判断是否已vmess开头，目前仅支持vmess
-		if strings.HasPrefix(proxyStr, "vmess://") {
-			proxyStr = proxyStr[8:]
-			vmessProxy, vmessProxyErr := base64.URLEncoding.DecodeString(proxyStr)
-
-			if vmessProxyErr == nil {
-				vmessProxyModel := model.Base64VmessProxy{}
-				unmarshalVmessProxyErr := json.Unmarshal(vmessProxy, &vmessProxyModel)
-				if unmarshalVmessProxyErr != nil {
-					return nil, unmarshalVmessProxyErr
-				}
-				alertId, _ := strconv.Atoi(vmessProxyModel.AlterId)
-				proxyName := vmessProxyModel.Name
-				for {
-					contains := proxyNameSet.Contains(proxyName)
-					if contains {
-						proxyName = proxyName + "$"
-					} else {
-						proxyNameSet.Add(proxyName)
-						break
-					}
-				}
-				proxyNameSet.Contains(proxyName)
-				proxyArr = append(proxyArr, model.Proxy{
-					Name:           proxyName,
-					Type:           "vmess",
-					Server:         vmessProxyModel.Server,
-					Port:           vmessProxyModel.Port,
-					Cipher:         "auto",
-					Uuid:           vmessProxyModel.Uuid,
-					AlterId:        alertId,
-					Tls:            vmessProxyModel.Tls != "",
-					SkipCertVerify: vmessProxyModel.Tls != "",
-					Network:        vmessProxyModel.Network,
-					WsPath:         vmessProxyModel.WsPath,
-					WsHeaders: yaml.MapSlice{
-						yaml.MapItem{
-							Key:   "Host",
-							Value: vmessProxyModel.Host,
-						},
-					},
-				})
-			}
-		}
-	}
-
-	return proxyArr, nil
-}
-
-// 解析 yaml 格式的服务器信息
-func parseYamlProxy(proxyBody []byte, filterProxyName []string, filterProxyServer []string) ([]model.Proxy, error) {
-	// base64 解析失败了，尝试解析 yaml
-	proxyRule := model.Rule{}
-	unmarshalProxyRuleErr := yaml.Unmarshal(proxyBody, &proxyRule)
-	if unmarshalProxyRuleErr != nil {
-		fmt.Println(string(proxyBody))
-		fmt.Println(unmarshalProxyRuleErr)
-		return nil, errors.New("订阅 Proxy 信息 yaml 解析失败,请检查订阅url是否正确")
-	}
-
-	proxyServerArr := proxyRule.Proxy
-	filterProxyArr := filterUnAddProxyServer(proxyServerArr, filterProxyName, filterProxyServer)
-
-	return filterProxyArr, nil
-}
-
-// 解析 base64 格式的服务器信息
-func parseBase64Proxy(proxyBody []byte, filterProxyName []string, filterProxyServer []string) ([]model.Proxy, error) {
-	// base64 解析失败了，尝试解析 yaml
-	base64ProxyArr, parseBase64ProxyArr := parseBase64ProxyArr(proxyBody)
-	if parseBase64ProxyArr != nil {
-		return nil, errors.New("订阅 Proxy 信息 base64 解析失败")
-	}
-	filterProxyArr := filterUnAddProxyServer(base64ProxyArr, filterProxyName, filterProxyServer)
-
-	return filterProxyArr, nil
-}
-
-// 过滤不想要加入的proxy
-func filterUnAddProxyServer(proxyServerArr []model.Proxy, filterProxyName []string, filterProxyServer []string) []model.Proxy {
-	// 解析成功了赋值
-	var proxyArr []model.Proxy
-filterStart:
-	for _, proxy := range proxyServerArr {
-		for _, filterName := range filterProxyName {
-			if filterName == proxy.Name {
-				continue filterStart
-			}
-		}
-		for _, server := range filterProxyServer {
-			if server == proxy.Server {
-				continue filterStart
-			}
-		}
-		proxyArr = append(proxyArr, proxy)
-	}
-	return proxyArr
 }
 
 // 写出 Hackl0us 规则

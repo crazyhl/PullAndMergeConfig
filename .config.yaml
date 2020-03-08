@@ -27,7 +27,7 @@ pull-proxy-source:
   #  - name: name
   #    url: url
 
-# 下面的参数都会覆盖到最终生成的配置文件里面去
+# 下面的参数都会覆盖或合并到最终生成的配置文件里面去
 
 # HTTP 代理端口
 port: 7890

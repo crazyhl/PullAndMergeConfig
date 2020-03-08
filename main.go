@@ -172,6 +172,7 @@ func getItems(items my_interface.HasItemInterface, name string) (interface{}, er
 	return items.HasItem(name)
 }
 
+// 解析 base64 的代理数组信息
 func parseBase64ProxyArr(base64ProxyStr []byte) ([]model.Proxy, error) {
 	// 把base64 换行
 	proxyStrArr := strings.Split(string(base64ProxyStr), "\n")

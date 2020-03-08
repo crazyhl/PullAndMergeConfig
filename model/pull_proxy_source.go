@@ -16,5 +16,5 @@ func (proxies PullProxySources) HasItem(name string) (interface{}, error) {
 			return proxy, nil
 		}
 	}
-	return nil, errors.New("没有找到匹配的基础规则源")
+	return nil, errors.New("没有找到匹配的拉取规则源")
 }

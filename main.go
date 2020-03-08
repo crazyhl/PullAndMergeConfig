@@ -6,10 +6,10 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"parseAndCombineMyClashRules/base_rule"
 	"parseAndCombineMyClashRules/model"
 	"parseAndCombineMyClashRules/my_interface"
 	"parseAndCombineMyClashRules/utils"
-	"strings"
 	"sync"
 )
 
@@ -124,11 +124,14 @@ func main() {
 	}
 	wg.Wait()
 	_, _ = hiYellowColor.Println("开始合并配置文件")
+
 	// 写出规则文件
 	if configBaseRule.Name == "Hackl0us" {
-		readyToWriteRule = mergeHackl0usRule(customConfig, readyToWriteRule, proxyArr)
+		baseRule := base_rule.Hackl0us{Rule: readyToWriteRule}
+		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr)
 	} else if configBaseRule.Name == "ConnersHua" {
-		readyToWriteRule = mergeConnersHuaRule(customConfig, readyToWriteRule, proxyArr)
+		baseRule := base_rule.ConnersHua{Rule: readyToWriteRule}
+		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr)
 	}
 
 	marshalRule, _ := yaml.Marshal(&readyToWriteRule)
@@ -148,219 +151,4 @@ func main() {
 			_, _ = hiYellowColor.Println("配置文件写出成功，快复制到 clash 的配置文件夹使用吧!!!")
 		}
 	}
-}
-
-// 写出 Hackl0us 规则
-func mergeHackl0usRule(customConfig model.Config, readyToWriteRule model.Rule, proxyArr map[string][]model.Proxy) model.Rule {
-	// 合并config 参数
-	if customConfig.Port > 0 {
-		readyToWriteRule.Port = customConfig.Port
-	}
-
-	if customConfig.SocksPort > 0 {
-		readyToWriteRule.SocksPort = customConfig.SocksPort
-	}
-
-	if customConfig.AllowLan {
-		readyToWriteRule.AllowLan = customConfig.AllowLan
-	}
-
-	if customConfig.Mode != "" {
-		readyToWriteRule.Mode = customConfig.Mode
-	}
-
-	if customConfig.LogLevel != "" {
-		readyToWriteRule.LogLevel = customConfig.LogLevel
-	}
-
-	if customConfig.ExternalController != "" {
-		readyToWriteRule.ExternalController = customConfig.ExternalController
-	}
-
-	if customConfig.ExternalUi != "" {
-		readyToWriteRule.ExternalUi = customConfig.ExternalUi
-	}
-
-	if customConfig.Secret != "" {
-		readyToWriteRule.ExternalUi = customConfig.Secret
-	}
-
-	if customConfig.Experimental.IgnoreResolveFail == true {
-		readyToWriteRule.Experimental = customConfig.Experimental
-	}
-
-	if readyToWriteRule.FallbackFilter.GeoIp == true {
-		readyToWriteRule.Dns.FallbackFilter = readyToWriteRule.FallbackFilter
-	}
-
-	if customConfig.Dns.EnableDns == true {
-		readyToWriteRule.Dns = customConfig.Dns
-	}
-
-	if customConfig.FallbackFilter.GeoIp == true {
-		readyToWriteRule.Dns.FallbackFilter = customConfig.FallbackFilter
-	}
-
-	if len(customConfig.CfwBypass) > 0 {
-		readyToWriteRule.CfwBypass = customConfig.CfwBypass
-	}
-
-	if customConfig.CfwLatencyTimeout > 0 {
-		readyToWriteRule.CfwLatencyTimeout = customConfig.CfwLatencyTimeout
-	}
-
-	if len(customConfig.Rule) > 0 {
-		readyToWriteRule.Rule = append(customConfig.Rule, readyToWriteRule.Rule...)
-	}
-
-	var writeProxyGroupItemNameArr []string
-	var writeProxyName []string
-	var writeProxy []model.Proxy
-
-	if len(customConfig.Proxy) > 0 {
-		for _, p := range customConfig.Proxy {
-			writeProxyName = append(writeProxyName, p.Name)
-			writeProxy = append(writeProxy, p)
-		}
-	}
-
-	for _, proxier := range proxyArr {
-		for _, p := range proxier {
-			writeProxyName = append(writeProxyName, p.Name)
-			writeProxy = append(writeProxy, p)
-		}
-	}
-
-	if len(customConfig.ProxyGroup) > 0 {
-		for index, pGroup := range customConfig.ProxyGroup {
-			writeProxyGroupItemNameArr = append(writeProxyGroupItemNameArr, pGroup.Name)
-			customConfig.ProxyGroup[index].Proxies = writeProxyName
-		}
-	}
-	writeProxyName = append(writeProxyGroupItemNameArr, writeProxyName...)
-	customConfig.ProxyGroup = append(customConfig.ProxyGroup, model.ProxyGroup{
-		Name:    "Proxy",
-		Type:    "select",
-		Proxies: writeProxyName,
-	})
-	readyToWriteRule.Proxy = writeProxy
-	readyToWriteRule.ProxyGroup = customConfig.ProxyGroup
-
-	return readyToWriteRule
-}
-
-// 写出 ConnersHua 规则
-func mergeConnersHuaRule(customConfig model.Config, readyToWriteRule model.Rule, proxyArr map[string][]model.Proxy) model.Rule {
-	// 合并config 参数
-	if customConfig.Port > 0 {
-		readyToWriteRule.Port = customConfig.Port
-	}
-
-	if customConfig.SocksPort > 0 {
-		readyToWriteRule.SocksPort = customConfig.SocksPort
-	}
-
-	if customConfig.AllowLan {
-		readyToWriteRule.AllowLan = customConfig.AllowLan
-	}
-
-	if customConfig.Mode != "" {
-		readyToWriteRule.Mode = customConfig.Mode
-	}
-
-	if customConfig.LogLevel != "" {
-		readyToWriteRule.LogLevel = customConfig.LogLevel
-	}
-
-	if customConfig.ExternalController != "" {
-		readyToWriteRule.ExternalController = customConfig.ExternalController
-	}
-
-	if customConfig.ExternalUi != "" {
-		readyToWriteRule.ExternalUi = customConfig.ExternalUi
-	}
-
-	if customConfig.Secret != "" {
-		readyToWriteRule.ExternalUi = customConfig.Secret
-	}
-
-	if customConfig.Experimental.IgnoreResolveFail == true {
-		readyToWriteRule.Experimental = customConfig.Experimental
-	}
-
-	if readyToWriteRule.FallbackFilter.GeoIp == true {
-		readyToWriteRule.Dns.FallbackFilter = readyToWriteRule.FallbackFilter
-	}
-
-	if customConfig.Dns.EnableDns == true {
-		readyToWriteRule.Dns = customConfig.Dns
-	}
-
-	if customConfig.FallbackFilter.GeoIp == true {
-		readyToWriteRule.Dns.FallbackFilter = customConfig.FallbackFilter
-	}
-
-	if len(customConfig.CfwBypass) > 0 {
-		readyToWriteRule.CfwBypass = customConfig.CfwBypass
-	}
-
-	if customConfig.CfwLatencyTimeout > 0 {
-		readyToWriteRule.CfwLatencyTimeout = customConfig.CfwLatencyTimeout
-	}
-
-	if len(customConfig.Rule) > 0 {
-		readyToWriteRule.Rule = append(customConfig.Rule, readyToWriteRule.Rule...)
-	}
-
-	var writeProxyGroupItemNameArr []string
-	var writeProxyName []string
-	var writeProxy []model.Proxy
-
-	if len(customConfig.Proxy) > 0 {
-		for _, p := range customConfig.Proxy {
-			writeProxyName = append(writeProxyName, p.Name)
-			writeProxy = append(writeProxy, p)
-		}
-	}
-
-	for _, proxier := range proxyArr {
-		for _, p := range proxier {
-			writeProxyName = append(writeProxyName, p.Name)
-			writeProxy = append(writeProxy, p)
-		}
-	}
-
-	if len(customConfig.ProxyGroup) > 0 {
-		for index, pGroup := range customConfig.ProxyGroup {
-			writeProxyGroupItemNameArr = append(writeProxyGroupItemNameArr, pGroup.Name)
-			customConfig.ProxyGroup[index].Proxies = writeProxyName
-		}
-	}
-	writeProxyName = append(writeProxyGroupItemNameArr, writeProxyName...)
-
-	readyToWriteRule.Proxy = writeProxy
-	for _, customGroupInfo := range customConfig.ProxyGroup {
-		readyToWriteRule.ProxyGroup = append(readyToWriteRule.ProxyGroup, customGroupInfo)
-	}
-	// 处理他自己的各个组
-	for index, groupInfo := range readyToWriteRule.ProxyGroup {
-		switch groupInfo.Name {
-		case "UrlTest":
-			readyToWriteRule.ProxyGroup[index].Proxies = writeProxyName
-		case "PROXY":
-			readyToWriteRule.ProxyGroup[index].Proxies = append([]string{"UrlTest"}, writeProxyName...)
-		case "GlobalMedia":
-			readyToWriteRule.ProxyGroup[index].Proxies = append([]string{"PROXY"}, writeProxyName...)
-		case "HKMTMedia":
-			readyToWriteRule.ProxyGroup[index].Proxies = []string{"DIRECT", "PROXY"} //append(, writeProxyName...)
-			for _, proxyName := range writeProxyName {
-				if strings.Contains(strings.ToLower(proxyName), "hk") ||
-					strings.Contains(strings.ToLower(proxyName), "港") {
-					readyToWriteRule.ProxyGroup[index].Proxies = append(readyToWriteRule.ProxyGroup[index].Proxies, proxyName)
-				}
-			}
-		}
-	}
-
-	return readyToWriteRule
 }

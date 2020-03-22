@@ -21,4 +21,6 @@ type Config struct {
 	Proxy              []Proxy          `yaml:"Proxy,omitempty"`               // 这里还可以放一些自定义的代理信息上去哟
 	ProxyGroup         []ProxyGroup     `yaml:"Proxy Group,omitempty"`         // 最终会合并到配置文件中，并且这里面的 所有，都会合并到 proxy 组中去
 	Rule               []string         `yaml:"Rule,omitempty"`                // 自定义规则列表 最终会合并到配置文件中
+	UploadConfig       string           `yaml:"uploadConfig,omitempty"`        // 是否上传，如果不上传就为空，如果上传就写入上传配置前缀
+	UpYunConfig        UpYunConfig      `yaml:"upyunConfig,omitempty"`         // 又拍云上传配置
 }

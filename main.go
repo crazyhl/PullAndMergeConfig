@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"github.com/fatih/color"
+	"github.com/upyun/go-sdk/upyun"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"parseAndCombineMyClashRules/model"
 	"parseAndCombineMyClashRules/my_interface"
 	"parseAndCombineMyClashRules/utils"
+	"path/filepath"
 	"sync"
 )
 
@@ -19,9 +21,16 @@ func main() {
 	hiRedColor := color.New(color.FgHiRed)
 	cyanColor := color.New(color.FgCyan)
 	hiMagenta := color.New(color.FgHiMagenta)
+	// 可执行程序所在目录
+	root := filepath.Dir(os.Args[0])
+	absPath, absPathErr := filepath.Abs(root)
+	if absPathErr != nil {
+		hiRedColor.Println("获取运行路径失败")
+		return
+	}
 	// 读入配置文件
 	_, _ = hiYellowColor.Println("开始加载配置文件...")
-	configFile, readConfigFileErr := ioutil.ReadFile("./config.yaml")
+	configFile, readConfigFileErr := ioutil.ReadFile(absPath + "/config.yaml")
 	if readConfigFileErr != nil {
 		_, _ = hiRedColor.Printf("error: %v\n", readConfigFileErr)
 		_, _ = hiRedColor.Println("读入配置文件失败了，检查配置文件是否存在")
@@ -135,8 +144,8 @@ func main() {
 	}
 
 	marshalRule, _ := yaml.Marshal(&readyToWriteRule)
-
-	f, err := os.Create("./" + configBaseRule.Name + ".yaml")
+	writeConfigPath := absPath + "/" + configBaseRule.Name + ".yaml"
+	f, err := os.Create(writeConfigPath)
 	if err != nil {
 		_, _ = hiRedColor.Println(err)
 		_, _ = hiRedColor.Println("创建写出文件失败,请检查是否存在同名文件！！！")
@@ -149,6 +158,34 @@ func main() {
 			_, _ = hiRedColor.Println("写入文件失败，请检查报错信息！！！")
 		} else {
 			_, _ = hiYellowColor.Println("配置文件写出成功，快复制到 clash 的配置文件夹使用吧!!!")
+			// 写出成功后，判断是否需要上传
+			uploadConfig := customConfig.UploadConfig
+			if uploadConfig == "upyun" {
+				// 如果输入了配置就读入配置
+				_, _ = hiYellowColor.Println("采用又拍云配置上传。。。")
+				appointConfig := customConfig.UpYunConfig
+				if appointConfig.Bucket == "" || appointConfig.Operator == "" || appointConfig.Password == "" {
+					_, _ = hiRedColor.Println("又拍云参数错误，bucket、operator 和 password 为必填")
+					return
+				}
+
+				up := upyun.NewUpYun(&upyun.UpYunConfig{
+					Bucket:   appointConfig.Bucket,
+					Operator: appointConfig.Operator,
+					Password: appointConfig.Password,
+				})
+
+				upYunUploadConfigError := up.Put(&upyun.PutObjectConfig{
+					Path:      appointConfig.PathPrefix + configBaseRule.Name + ".yaml",
+					LocalPath: writeConfigPath,
+				})
+				if upYunUploadConfigError != nil {
+					_, _ = hiRedColor.Println("上传错误" + upYunUploadConfigError.Error())
+					return
+				} else {
+					_, _ = hiYellowColor.Println("又拍云配置上传成功")
+				}
+			}
 		}
 	}
 }

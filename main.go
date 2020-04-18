@@ -160,8 +160,6 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 		}(customConfig.PullProxySource[i])
 	}
 	wg.Wait()
-	log.Println("开始合并配置文件")
-
 	// 写出规则文件
 	if configBaseRule.Name == "Hackl0us" {
 		baseRule := base_rule.Hackl0us{Rule: readyToWriteRule}

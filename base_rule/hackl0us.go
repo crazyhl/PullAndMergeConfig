@@ -80,9 +80,11 @@ func (hakcl0us Hackl0us) MergeRule(customConfig model.Config, proxyArr map[strin
 	}
 
 	for _, proxier := range proxyArr {
-		for _, p := range proxier {
-			writeProxyName = append(writeProxyName, p.Name)
-			writeProxy = append(writeProxy, p)
+		if proxier != nil {
+			for _, p := range proxier {
+				writeProxyName = append(writeProxyName, p.Name)
+				writeProxy = append(writeProxy, p)
+			}
 		}
 	}
 

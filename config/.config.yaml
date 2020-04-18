@@ -35,6 +35,10 @@ upyunConfig:
     password: # 操作员密码
     pathPrefix: #上传路径前缀
 
+githubConfig:
+  username: # 用户名
+  repository: # 项目名称
+
 
 # 下面的参数都会覆盖或合并到最终生成的配置文件里面去
 

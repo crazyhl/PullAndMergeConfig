@@ -9,7 +9,7 @@ type ConnersHua struct {
 	Rule model.Rule
 }
 
-func (connersHua ConnersHua) MergeRule(customConfig model.Config, proxyArr map[string][]model.Proxy) model.Rule {
+func (connersHua ConnersHua) MergeRule(customConfig model.Config, proxyArr map[string]interface{}) model.Rule {
 	// 合并config 参数
 	if customConfig.Port > 0 {
 		connersHua.Rule.Port = customConfig.Port
@@ -84,9 +84,15 @@ func (connersHua ConnersHua) MergeRule(customConfig model.Config, proxyArr map[s
 
 	for _, proxier := range proxyArr {
 		if proxier != nil {
-			for _, p := range proxier {
-				writeProxyName = append(writeProxyName, p.Name)
-				writeProxy = append(writeProxy, p)
+			proxier, ok := proxier.([]interface{})
+			if ok {
+				for _, p := range proxier {
+					proxy, ok := p.(model.Proxy)
+					if ok {
+						writeProxyName = append(writeProxyName, proxy.Name)
+						writeProxy = append(writeProxy, proxy)
+					}
+				}
 			}
 		}
 	}

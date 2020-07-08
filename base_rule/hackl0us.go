@@ -6,7 +6,7 @@ type Hackl0us struct {
 	Rule model.Rule
 }
 
-func (hakcl0us Hackl0us) MergeRule(customConfig model.Config, proxyArr map[string][]model.Proxy) model.Rule {
+func (hakcl0us Hackl0us) MergeRule(customConfig model.Config, proxyArr map[string]interface{}) model.Rule {
 	// 合并config 参数
 	if customConfig.Port > 0 {
 		hakcl0us.Rule.Port = customConfig.Port
@@ -81,9 +81,15 @@ func (hakcl0us Hackl0us) MergeRule(customConfig model.Config, proxyArr map[strin
 
 	for _, proxier := range proxyArr {
 		if proxier != nil {
-			for _, p := range proxier {
-				writeProxyName = append(writeProxyName, p.Name)
-				writeProxy = append(writeProxy, p)
+			proxier, ok := proxier.([]interface{})
+			if ok {
+				for _, p := range proxier {
+					proxy, ok := p.(model.Proxy)
+					if ok {
+						writeProxyName = append(writeProxyName, proxy.Name)
+						writeProxy = append(writeProxy, proxy)
+					}
+				}
 			}
 		}
 	}

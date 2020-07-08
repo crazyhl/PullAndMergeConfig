@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"parseAndCombineMyClashRules/base_rule"
+	"parseAndCombineMyClashRules/concurrent_map"
 	"parseAndCombineMyClashRules/model"
 	"parseAndCombineMyClashRules/my_interface"
 	"parseAndCombineMyClashRules/utils"
@@ -26,6 +27,8 @@ func init() {
 	// 可执行程序所在目录
 	root := filepath.Dir(os.Args[0])
 	absPath, absPathErr = filepath.Abs(root)
+	// 创建日志目录
+	os.MkdirAll(absPath+"/log", os.ModePerm)
 	// 设置日志输出文件
 	logFile, logFileErr := os.OpenFile(absPath+"/log/errors.txt",
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -126,11 +129,11 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 	pullProxySourceCunt := len(customConfig.PullProxySource)
 	wg := sync.WaitGroup{}
 	wg.Add(pullProxySourceCunt)
-	proxyArr := make(map[string][]model.Proxy)
+	proxyArr := concurrent_map.New()
 	for i := 0; i < pullProxySourceCunt; i++ {
 		go func(source model.PullProxySource) {
 			defer wg.Done()
-			proxyArr[source.Name] = nil
+			proxyArr.Set(source.Name, nil)
 			proxyBody, proxyErr := utils.HttpGet(source.Url)
 			if proxyErr != nil {
 				return
@@ -144,7 +147,7 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 					//_, _ = hiMagenta.Println(source.Name + yamlProxyErr.Error())
 					return
 				}
-				proxyArr[source.Name] = yamlProxyArr
+				proxyArr.Set(source.Name, yamlProxyArr)
 				//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， yaml 格式。")
 				return
 			}
@@ -154,7 +157,7 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 				//_, _ = hiMagenta.Println(source.Name + base64ProxyServerErr.Error())
 				return
 			}
-			proxyArr[source.Name] = base64ProxyServerArr
+			proxyArr.Set(source.Name, base64ProxyServerArr)
 			//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， base64 格式。")
 			return
 		}(customConfig.PullProxySource[i])
@@ -163,10 +166,10 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 	// 写出规则文件
 	if configBaseRule.Name == "Hackl0us" {
 		baseRule := base_rule.Hackl0us{Rule: readyToWriteRule}
-		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr)
+		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
 	} else if configBaseRule.Name == "ConnersHua" {
 		baseRule := base_rule.ConnersHua{Rule: readyToWriteRule}
-		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr)
+		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
 	}
 
 	marshalRule, _ := yaml.Marshal(&readyToWriteRule)

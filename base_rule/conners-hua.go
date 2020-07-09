@@ -81,17 +81,13 @@ func (connersHua ConnersHua) MergeRule(customConfig model.Config, proxyArr map[s
 			writeProxy = append(writeProxy, p)
 		}
 	}
-
 	for _, proxier := range proxyArr {
 		if proxier != nil {
-			proxier, ok := proxier.([]interface{})
+			proxier, ok := proxier.([]model.Proxy)
 			if ok {
 				for _, p := range proxier {
-					proxy, ok := p.(model.Proxy)
-					if ok {
-						writeProxyName = append(writeProxyName, proxy.Name)
-						writeProxy = append(writeProxy, proxy)
-					}
+					writeProxyName = append(writeProxyName, p.Name)
+					writeProxy = append(writeProxy, p)
 				}
 			}
 		}

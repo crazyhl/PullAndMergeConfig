@@ -1,6 +1,7 @@
 package base_rule
 
 import (
+	"fmt"
 	"parseAndCombineMyClashRules/model"
 	"strings"
 )
@@ -70,6 +71,12 @@ func (connersHua ConnersHua) MergeRule(customConfig model.Config, proxyArr map[s
 	if len(customConfig.Rule) > 0 {
 		connersHua.Rule.Rule = append(customConfig.Rule, connersHua.Rule.Rule...)
 	}
+	if len(customConfig.Rules) > 0 {
+		connersHua.Rule.Rules = append(customConfig.Rules, connersHua.Rule.Rules...)
+	}
+	// 合并 rule
+	connersHua.Rule.Rules = append(connersHua.Rule.Rules, connersHua.Rule.Rule...)
+	connersHua.Rule.Rule = nil
 
 	var writeProxyGroupItemNameArr []string
 	var writeProxyName []string
@@ -100,26 +107,30 @@ func (connersHua ConnersHua) MergeRule(customConfig model.Config, proxyArr map[s
 		}
 	}
 	writeProxyName = append(writeProxyGroupItemNameArr, writeProxyName...)
+	fmt.Println(connersHua)
 
-	connersHua.Rule.Proxy = writeProxy
+	connersHua.Rule.Proxies = writeProxy
+	connersHua.Rule.Proxy = nil
 	for _, customGroupInfo := range customConfig.ProxyGroup {
-		connersHua.Rule.ProxyGroup = append(connersHua.Rule.ProxyGroup, customGroupInfo)
+		connersHua.Rule.ProxyGroups = append(connersHua.Rule.ProxyGroups, customGroupInfo)
 	}
+	//connersHua.Rule.ProxyGroups = connersHua.Rule.ProxyGroup
+	connersHua.Rule.ProxyGroup = nil
 	// 处理他自己的各个组
-	for index, groupInfo := range connersHua.Rule.ProxyGroup {
+	for index, groupInfo := range connersHua.Rule.ProxyGroups {
 		switch groupInfo.Name {
 		case "UrlTest":
-			connersHua.Rule.ProxyGroup[index].Proxies = writeProxyName
+			connersHua.Rule.ProxyGroups[index].Proxies = writeProxyName
 		case "PROXY":
-			connersHua.Rule.ProxyGroup[index].Proxies = append([]string{"UrlTest"}, writeProxyName...)
+			connersHua.Rule.ProxyGroups[index].Proxies = append([]string{"UrlTest"}, writeProxyName...)
 		case "GlobalMedia":
-			connersHua.Rule.ProxyGroup[index].Proxies = append([]string{"PROXY"}, writeProxyName...)
+			connersHua.Rule.ProxyGroups[index].Proxies = append([]string{"PROXY"}, writeProxyName...)
 		case "HKMTMedia":
-			connersHua.Rule.ProxyGroup[index].Proxies = []string{"DIRECT", "PROXY"} //append(, writeProxyName...)
+			connersHua.Rule.ProxyGroups[index].Proxies = []string{"DIRECT", "PROXY"} //append(, writeProxyName...)
 			for _, proxyName := range writeProxyName {
 				if strings.Contains(strings.ToLower(proxyName), "hk") ||
 					strings.Contains(strings.ToLower(proxyName), "港") {
-					connersHua.Rule.ProxyGroup[index].Proxies = append(connersHua.Rule.ProxyGroup[index].Proxies, proxyName)
+					connersHua.Rule.ProxyGroups[index].Proxies = append(connersHua.Rule.ProxyGroups[index].Proxies, proxyName)
 				}
 			}
 		}

@@ -67,8 +67,14 @@ func (hakcl0us Hackl0us) MergeRule(customConfig model.Config, proxyArr map[strin
 	}
 
 	if len(customConfig.Rule) > 0 {
-		hakcl0us.Rule.Rule = append(customConfig.Rule, hakcl0us.Rule.Rule...)
+		hakcl0us.Rule.Rules = append(customConfig.Rule, hakcl0us.Rule.Rule...)
 	}
+	if len(customConfig.Rules) > 0 {
+		hakcl0us.Rule.Rules = append(customConfig.Rules, hakcl0us.Rule.Rules...)
+	}
+	// 合并 rule
+	hakcl0us.Rule.Rules = append(hakcl0us.Rule.Rules, hakcl0us.Rule.Rule...)
+	hakcl0us.Rule.Rule = nil
 
 	var writeProxyGroupItemNameArr []string
 	var writeProxyName []string
@@ -104,8 +110,11 @@ func (hakcl0us Hackl0us) MergeRule(customConfig model.Config, proxyArr map[strin
 		Type:    "select",
 		Proxies: writeProxyName,
 	})
-	hakcl0us.Rule.Proxy = writeProxy
-	hakcl0us.Rule.ProxyGroup = customConfig.ProxyGroup
+	hakcl0us.Rule.Proxies = writeProxy
+	hakcl0us.Rule.ProxyGroups = customConfig.ProxyGroup
+	// 清空两个不需要的值
+	hakcl0us.Rule.Proxy = nil
+	hakcl0us.Rule.ProxyGroup = nil
 
 	return hakcl0us.Rule
 }

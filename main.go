@@ -110,6 +110,7 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 获取 最新的规则
+	fmt.Println(configBaseRule.Url)
 	baseRuleBody, baseRuleErr := utils.HttpGet(configBaseRule.Url)
 	if baseRuleErr != nil {
 		log.Println(baseRuleErr)

@@ -35,6 +35,7 @@ func ParseYamlProxy(proxyBody []byte, filterProxyName []string, filterProxyServe
 	}
 
 	proxyServerArr := proxyRule.Proxy
+	proxyServerArr = append(proxyServerArr, proxyRule.Proxies...)
 	filterProxyArr := filterUnAddProxyServer(proxyServerArr, filterProxyName, filterProxyServer)
 
 	return filterProxyArr, nil

@@ -17,6 +17,9 @@ type Rule struct {
 	CfwBypass          []string       `yaml:"cfw-bypass,omitempty"`          // 仅在windows下有效
 	CfwLatencyTimeout  int            `yaml:"cfw-latency-timeout,omitempty"` // 仅在windows下有效
 	Proxy              []Proxy        `yaml:"Proxy,omitempty"`               // 仅在windows下有效
+	Proxies            []Proxy        `yaml:"proxies,omitempty"`             // 仅在windows下有效
 	ProxyGroup         []ProxyGroup   `yaml:"Proxy Group,omitempty"`         // 仅在windows下有效
+	ProxyGroups        []ProxyGroup   `yaml:"proxy-groups,omitempty"`        // 仅在windows下有效
 	Rule               []string       `yaml:"Rule,omitempty"`                // 自定义规则列表
+	Rules              []string       `yaml:"rules,omitempty"`               // 自定义规则列表
 }

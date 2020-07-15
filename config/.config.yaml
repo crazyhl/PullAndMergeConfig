@@ -9,7 +9,7 @@ base-rule:
     url: "https://raw.githubusercontent.com/Hackl0us/SS-Rule-Snippet/master/LAZY_RULES/clash.yaml"
   # ConnersHua https://github.com/ConnersHua/Profiles/tree/master
   - name: ConnersHua
-    url: "https://raw.githubusercontent.com/ConnersHua/Profiles/master/Clash/Pro.yaml"
+    url: "https://raw.githubusercontent.com/ConnersHua/Profiles/master/Clash/Global.yaml"
 
 # 过滤的节点 name
 filter-proxy-name:
@@ -157,7 +157,35 @@ Proxy:
 #    password: "password"
 #    # udp: true
 
+proxies:
+#  - name: "ss1"
+#    type: ss
+#    server: server
+#    port: 443
+#    cipher: chacha20-ietf-poly1305
+#    password: "password"
+#    # udp: true
+
 Proxy Group:
+#  # url-test 可以自动选择与指定 URL 测速后，延迟最短的服务器
+#  - name: "auto"
+#    type: url-test
+#    url: 'http://www.gstatic.com/generate_204'
+#    interval: 300
+
+#  # fallback 可以尽量按照用户书写的服务器顺序，在确保服务器可用的情况下，自动选择服务器
+#  - name: "fallback-auto"
+#    type: fallback
+#    url: 'http://www.gstatic.com/generate_204'
+#    interval: 300
+#
+#  # load-balance 可以使相同 eTLD 请求在同一条代理线路上
+#  - name: "load-balance"
+#    type: load-balance
+#    url: 'http://www.gstatic.com/generate_204'
+#    interval: 300
+
+proxy-groups:
 #  # url-test 可以自动选择与指定 URL 测速后，延迟最短的服务器
 #  - name: "auto"
 #    type: url-test
@@ -178,4 +206,7 @@ Proxy Group:
 
 
 Rule:
+#  - DOMAIN-SUFFIX,163.com,DIRECT
+
+rules:
 #  - DOMAIN-SUFFIX,163.com,DIRECT

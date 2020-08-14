@@ -17,3 +17,13 @@ func HttpGet(url string) ([]byte, error) {
 	}
 	return body, nil
 }
+
+// 获取请求ip 优先获取 forwarded，如果没有则返回 remoteAddr
+func GetRequestIp(r *http.Request) string {
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
+	if forwarded != "" {
+		return forwarded
+	}
+
+	return r.RemoteAddr
+}

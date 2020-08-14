@@ -1,20 +1,14 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"parseAndCombineMyClashRules/base_rule"
-	"parseAndCombineMyClashRules/concurrent_map"
-	"parseAndCombineMyClashRules/model"
-	"parseAndCombineMyClashRules/my_interface"
 	"parseAndCombineMyClashRules/utils"
 	"path/filepath"
-	"sync"
 )
 
 var absPath string
@@ -71,108 +65,100 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 		log.Println("读入配置文件失败了，检查配置文件是否存在")
 		return
 	}
+	// 解析本地配置文件
+	userConfigMap := make(map[string]interface{})
+	err := yaml.Unmarshal([]byte(configFile), &userConfigMap)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
 
-	// 解析自定义的配置文件
-	customConfig := model.Config{}
-	unmarshalConfigErr := yaml.Unmarshal(configFile, &customConfig)
-	if unmarshalConfigErr != nil {
-		log.Printf("error: %v\n", unmarshalConfigErr)
-		log.Println("解析配置文件失败了，看看格式是不是不正确了")
+	// 获取请求参数的配置项
+	baseConfigName := r.URL.Query().Get("baseName")
+	baseConfigRequestUrl := ""
+
+	if baseConfigName != "" {
+		// 如果获取成功就去找配置文件
+		for _, baseConfig := range userConfigMap["base-config"].([]interface{}) {
+			baseConfigMap := baseConfig.(map[interface{}]interface{})
+			if baseConfigMap["name"] == baseConfigName {
+				baseConfigRequestUrl = baseConfigMap["url"].(string)
+			}
+		}
+	} else {
+		log.Printf("请求url: %s，请求IP: %s\n，没有输入配置文件名称", r.URL, utils.GetRequestIp(r))
 		return
 	}
 
-	// 判断是否配置了要获取的根基配置文件是否存在
-	if len(customConfig.ConfigBaseRule) <= 0 {
-		log.Println("基础规则源不存在，请填写配置文件后在获取")
-		return
-	}
-	// 获取基础配置列表
-	baseRules := customConfig.ConfigBaseRule
-	// 先获取第一个配置当做默认配置
-	configBaseRule := baseRules[0]
-	// 获取参数
-	baseConfigNameArr, getBaseConfigNameArrOk := r.URL.Query()["baseName"]
-	if getBaseConfigNameArrOk {
-		configBaseRuleName := baseConfigNameArr[0]
-		rule, err := my_interface.GetItems(baseRules, configBaseRuleName)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		// 通过断言进行类型转换，把空接口转换为我们的model类型
-		parseConfigBaseRule, assertErr := rule.(model.ConfigBaseRule)
-		if !assertErr {
-			log.Println(assertErr)
-			log.Println("基础规则源解析失败，请检查配置文件！")
-			return
-		}
-		configBaseRule = parseConfigBaseRule
+	if baseConfigRequestUrl == "" {
+		log.Printf("请求url: %s，请求IP: %s\n，没有找到对应配置文件", r.URL, utils.GetRequestIp(r))
 	}
 
-	// 获取 最新的规则
-	fmt.Println(configBaseRule.Url)
-	baseRuleBody, baseRuleErr := utils.HttpGet(configBaseRule.Url)
+	// 拉取基础配置
+	baseRuleBody, baseRuleErr := utils.HttpGet(baseConfigRequestUrl)
 	if baseRuleErr != nil {
 		log.Println(baseRuleErr)
-		log.Println("拉取基础规则失败，请检查网络！！！！")
+		log.Printf("请求url: %s，请求IP: %s\n，拉取基础规则失败，请检查网络！！！！", r.URL, utils.GetRequestIp(r))
 		return
 	}
 
-	readyToWriteRule := model.Rule{}
-	unmarshalReadyToWriteRuleErr := yaml.Unmarshal(baseRuleBody, &readyToWriteRule)
+	baseRuleMap := make(map[string]interface{})
+	unmarshalReadyToWriteRuleErr := yaml.Unmarshal(baseRuleBody, &baseRuleMap)
 	if unmarshalReadyToWriteRuleErr != nil {
 		log.Printf("error: %v\n", unmarshalReadyToWriteRuleErr)
 		log.Println("解析基础规则失败，请检查 url 是否正确 ！！！")
 		return
 	}
 
-	// 规则获取完成后多线程拉取用户订阅
-	pullProxySourceCunt := len(customConfig.PullProxySource)
-	wg := sync.WaitGroup{}
-	wg.Add(pullProxySourceCunt)
-	proxyArr := concurrent_map.New()
-	for i := 0; i < pullProxySourceCunt; i++ {
-		go func(source model.PullProxySource) {
-			defer wg.Done()
-			proxyArr.Set(source.Name, nil)
-			proxyBody, proxyErr := utils.HttpGet(source.Url)
-			if proxyErr != nil {
-				return
-			}
+	fmt.Println(baseRuleMap)
 
-			decodeProxy, decodeProxyErr := base64.URLEncoding.DecodeString(string(proxyBody))
-			if decodeProxyErr != nil {
-				//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息不是 base64 文件，尝试用yaml解析")
-				yamlProxyArr, yamlProxyErr := utils.ParseYamlProxy(proxyBody, customConfig.FilterProxyName, customConfig.FilterProxyServer)
-				if yamlProxyErr != nil {
-					//_, _ = hiMagenta.Println(source.Name + yamlProxyErr.Error())
-					return
-				}
-				proxyArr.Set(source.Name, yamlProxyArr)
-				//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， yaml 格式。")
-				return
-			}
-			//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
-			base64ProxyServerArr, base64ProxyServerErr := utils.ParseBase64Proxy(decodeProxy, customConfig.FilterProxyName, customConfig.FilterProxyServer)
-			if base64ProxyServerErr != nil {
-				//_, _ = hiMagenta.Println(source.Name + base64ProxyServerErr.Error())
-				return
-			}
-			proxyArr.Set(source.Name, base64ProxyServerArr)
-			//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， base64 格式。")
-			return
-		}(customConfig.PullProxySource[i])
-	}
-	wg.Wait()
-	// 写出规则文件
-	if configBaseRule.Name == "Hackl0us" {
-		baseRule := base_rule.Hackl0us{Rule: readyToWriteRule}
-		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
-	} else if configBaseRule.Name == "ConnersHua" {
-		baseRule := base_rule.ConnersHua{Rule: readyToWriteRule}
-		readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
-	}
-
-	marshalRule, _ := yaml.Marshal(&readyToWriteRule)
-	fmt.Fprintln(w, string(marshalRule))
+	//
+	//// 规则获取完成后多线程拉取用户订阅
+	//pullProxySourceCunt := len(customConfig.PullProxySource)
+	//wg := sync.WaitGroup{}
+	//wg.Add(pullProxySourceCunt)
+	//proxyArr := concurrent_map.New()
+	//for i := 0; i < pullProxySourceCunt; i++ {
+	//	go func(source model.PullProxySource) {
+	//		defer wg.Done()
+	//		proxyArr.Set(source.Name, nil)
+	//		proxyBody, proxyErr := utils.HttpGet(source.Url)
+	//		if proxyErr != nil {
+	//			return
+	//		}
+	//
+	//		decodeProxy, decodeProxyErr := base64.URLEncoding.DecodeString(string(proxyBody))
+	//		if decodeProxyErr != nil {
+	//			//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息不是 base64 文件，尝试用yaml解析")
+	//			yamlProxyArr, yamlProxyErr := utils.ParseYamlProxy(proxyBody, customConfig.FilterProxyName, customConfig.FilterProxyServer)
+	//			if yamlProxyErr != nil {
+	//				//_, _ = hiMagenta.Println(source.Name + yamlProxyErr.Error())
+	//				return
+	//			}
+	//			proxyArr.Set(source.Name, yamlProxyArr)
+	//			//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， yaml 格式。")
+	//			return
+	//		}
+	//		//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
+	//		base64ProxyServerArr, base64ProxyServerErr := utils.ParseBase64Proxy(decodeProxy, customConfig.FilterProxyName, customConfig.FilterProxyServer)
+	//		if base64ProxyServerErr != nil {
+	//			//_, _ = hiMagenta.Println(source.Name + base64ProxyServerErr.Error())
+	//			return
+	//		}
+	//		proxyArr.Set(source.Name, base64ProxyServerArr)
+	//		//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， base64 格式。")
+	//		return
+	//	}(customConfig.PullProxySource[i])
+	//}
+	//wg.Wait()
+	//// 写出规则文件
+	//if configBaseRule.Name == "Hackl0us" {
+	//	baseRule := base_rule.Hackl0us{Rule: readyToWriteRule}
+	//	readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
+	//} else if configBaseRule.Name == "ConnersHua" {
+	//	baseRule := base_rule.ConnersHua{Rule: readyToWriteRule}
+	//	readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
+	//}
+	//
+	//marshalRule, _ := yaml.Marshal(&readyToWriteRule)
+	//fmt.Fprintln(w, string(marshalRule))
 }

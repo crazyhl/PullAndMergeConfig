@@ -1,5 +1,9 @@
 ## parseAndCombineMyClashRules
 
+
+### 特别鸣谢
+[![jetbrains](jetbrains-variant-2.svg)](https://www.jetbrains.com/?from=PullAndMergeConfig)
+
 ### 简介
 
 这是一个可以自动合并多个订阅的信息，到我们指定的基础 `clash` 配置文件库中的脚本。
@@ -76,4 +80,3 @@
 - [Hackl0us](https://github.com/Hackl0us)
 - [ConnersHua](https://github.com/ConnersHua)
 - [lhie1](https://github.com/lhie1)
-

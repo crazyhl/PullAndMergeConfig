@@ -1,7 +1,6 @@
 # 基础规则源
 # 这个就是你要采用规则的源地址，会把代理填入这里面，然后把要覆盖的参数覆盖进去
-
-base-rule:
+base-config:
   #  - name: name
   #    url: url
   # Hackl0us https://github.com/Hackl0us/SS-Rule-Snippet
@@ -27,18 +26,6 @@ pull-proxy-source:
   #  - name: name
   #    url: url
 
-# 上传到又拍云
-uploadConfig: upyun # 开启上传后选择true
-upyunConfig:
-    bucket: # 上传到的 bucket
-    operator: # 操作员用户名
-    password: # 操作员密码
-    pathPrefix: #上传路径前缀
-
-githubConfig:
-  username: # 用户名
-  repository: # 项目名称
-
 
 # 下面的参数都会覆盖或合并到最终生成的配置文件里面去
 
@@ -47,6 +34,12 @@ port: 7890
 
 # SOCKS5 代理端口
 socks-port: 7891
+
+# Transparent proxy server port for Linux and macOS
+# redir-port: 7892
+
+# HTTP(S) and SOCKS5 server on the same port
+# mixed-port: 7890
 
 # 允许局域网的连接（可用来共享代理）
 allow-lan: false
@@ -63,6 +56,9 @@ mode: Rule
 # 5 个级别：silent / info / warning / error / debug。级别越高日志输出量越大，越倾向于调试，若需要请自行开启。
 log-level: silent
 
+# When set to false, resolver won't translate hostnames to IPv6 addresses ipv6 的支持
+ipv6: true
+
 # clash 的 RESTful API
 external-controller: 127.0.0.1:9090
 
@@ -73,89 +69,69 @@ external-controller: 127.0.0.1:9090
 # RESTful API 的口令 (可选)
 # secret: ""
 
-# 实验性功能
-experimental:
-  ignore-resolve-fail: true # 忽略 DNS 解析失败，默认值为 true
+# 出站网卡接口
+# interface-name: en0
 
-  # 本地 SOCKS5 / HTTP(S) 服务认证
-  # authentication:
-  #  - "user1:pass1"
-  #  - "user2:pass2"
+# DNS 服务器和建立连接时的 静态 Hosts, 仅在 dns.enhanced-mode 模式为 redir-host 生效
+# 支持通配符域名 (例如: *.clash.dev, *.foo.*.example.com )
+# 不使用通配符的域名优先级高于使用通配符的域名 (例如: foo.example.com > *.example.com > .example.com )
+# 注意: +.foo.com 的效果等同于 .foo.com 和 foo.com
+hosts:
+# '*.clash.dev': 127.0.0.1
+# '.dev': 127.0.0.1
+# 'alpha.clash.dev': '::1'
 
-  # # 实验性功能 hosts, 支持通配符 (例如 *.clash.dev 甚至 *.foo.*.example.com)
-  # # 静态的域名 比 通配域名 具有更高的优先级 (foo.example.com 优先于 *.example.com)
-  # # 注意: hosts 在 fake-ip 模式下不生效
-#  hosts:
-#    '*.clash.dev': 127.0.0.1
-#    'alpha.clash.dev': '::1'
-
+# DNS 服务器配置(可选；若不配置，程序内置的 DNS 服务会被关闭)
 dns:
   enable: true
-  ipv6: false
-  # listen: 0.0.0.0:53
-  # enhanced-mode: redir-host # 或 fake-ip
-  # # fake-ip-range: 198.18.0.1/16 # 如果你不知道这个参数的作用，请勿修改
-  # fake-ip-filter: # fake-ip 白名单列表
+  listen: 0.0.0.0:53
+  ipv6: true # 当此选项为 false 时, AAAA 请求将返回空
+
+  # 以下填写的 DNS 服务器将会被用来解析 DNS 服务的域名
+  # 仅填写 DNS 服务器的 IP 地址
+  default-nameserver:
+    - 1.2.4.8
+    - 223.5.5.5
+    - 114.114.114.114
+    - 119.29.29.29
+    - 8.8.8.8
+  enhanced-mode: redir-host # 或 fake-ip
+  fake-ip-range: 198.18.0.1/16 # Fake IP 地址池 (CIDR 形式)
+  # use-hosts: true # 查询 hosts 并返回 IP 记录
+
+  # 在以下列表的域名将不会被解析为 fake ip，这些域名相关的解析请求将会返回它们真实的 IP 地址
+  # fake-ip-filter:
   #   - '*.lan'
   #   - localhost.ptlogin2.qq.com
 
+  # 支持 UDP / TCP / DoT / DoH 协议的 DNS 服务，可以指明具体的连接端口号。
+  # 所有 DNS 请求将会直接发送到服务器，不经过任何代理。
+  # Clash 会使用最先获得的解析记录回复 DNS 请求
   nameserver:
-    - 1.2.4.8
-    - 114.114.114.114
-    - 223.5.5.5
-    - tls://dns.rubyfish.cn:853
-    #- https://dns.rubyfish.cn/dns-query
+    - https://13800000000.rubyfish.cn/
+    - https://dns.alidns.com/dns-query
+    - https://doh.360.cn/dns-query
 
-  fallback: # 与 nameserver 内的服务器列表同时发起请求，当规则符合 GEOIP 在 CN 以外时，fallback 列表内的域名服务器生效。
-    - tls://dns.rubyfish.cn:853
-    - tls://1.0.0.1:853
-    - tls://dns.google:853
+  # 当 fallback 参数被配置时, DNS 请求将同时发送至上方 nameserver 列表和下方 fallback 列表中配置的所有 DNS 服务器.
+  # 当解析得到的 IP 地址的地理位置不是 CN 时，clash 将会选用 fallback 中 DNS 服务器的解析结果。
+  # fallback:
+  #  - https://dns.google/dns-query
 
-    #- https://dns.rubyfish.cn/dns-query
-    #- https://cloudflare-dns.com/dns-query
-    #- https://dns.google/dns-query
+  # 如果使用 nameserver 列表中的服务器解析的 IP 地址在下方列表中的子网中，则它们被认为是无效的，
+  # Clash 会选用 fallback 列表中配置 DNS 服务器解析得到的结果。
+  #
+  # 当 fallback-filter.geoip 为 true 且 IP 地址的地理位置为 CN 时，
+  # Clash 会选用 nameserver 列表中配置 DNS 服务器解析得到的结果。
+  #
+  # 当 fallback-filter.geoip 为 false, 如果解析结果在 fallback-filter.ipcidr 范围内，
+  # Clash 会选用 nameserver 列表中配置 DNS 服务器解析得到的结果。
+  #
+  # 采取以上逻辑进行域名解析是为了对抗 DNS 投毒攻击。
+  fallback-filter:
+    geoip: true
+    ipcidr:
+    # - 240.0.0.0/4
 
-fallback-filter:
-  geoip: true # 默认
-  ipcidr: # 在这个网段内的 IP 地址会被考虑为被污染的 IP
-    - 240.0.0.0/4
-
-# Clash for Windows
-cfw-bypass:
-  - qq.com
-  - music.163.com
-  - '*.music.126.net'
-  - localhost
-  - 127.*
-  - 10.*
-  - 172.16.*
-  - 172.17.*
-  - 172.18.*
-  - 172.19.*
-  - 172.20.*
-  - 172.21.*
-  - 172.22.*
-  - 172.23.*
-  - 172.24.*
-  - 172.25.*
-  - 172.26.*
-  - 172.27.*
-  - 172.28.*
-  - 172.29.*
-  - 172.30.*
-  - 172.31.*
-  - 192.168.*
-  - <local>
-cfw-latency-timeout: 5000
-
-Proxy:
-#  - name: "ss1"
-#    type: ss
-#    server: server
-#    port: 443
-#    cipher: chacha20-ietf-poly1305
-#    password: "password"
-#    # udp: true
 
 proxies:
 #  - name: "ss1"
@@ -165,25 +141,6 @@ proxies:
 #    cipher: chacha20-ietf-poly1305
 #    password: "password"
 #    # udp: true
-
-Proxy Group:
-#  # url-test 可以自动选择与指定 URL 测速后，延迟最短的服务器
-#  - name: "auto"
-#    type: url-test
-#    url: 'http://www.gstatic.com/generate_204'
-#    interval: 300
-
-#  # fallback 可以尽量按照用户书写的服务器顺序，在确保服务器可用的情况下，自动选择服务器
-#  - name: "fallback-auto"
-#    type: fallback
-#    url: 'http://www.gstatic.com/generate_204'
-#    interval: 300
-#
-#  # load-balance 可以使相同 eTLD 请求在同一条代理线路上
-#  - name: "load-balance"
-#    type: load-balance
-#    url: 'http://www.gstatic.com/generate_204'
-#    interval: 300
 
 proxy-groups:
 #  # url-test 可以自动选择与指定 URL 测速后，延迟最短的服务器
@@ -204,9 +161,24 @@ proxy-groups:
 #    url: 'http://www.gstatic.com/generate_204'
 #    interval: 300
 
-
-Rule:
-#  - DOMAIN-SUFFIX,163.com,DIRECT
+# 这东西实际上作用是给 proxy-groups 用的，做健康检查啥的
+proxy-providers:
+  provider1:
+    type: http
+    url: "url"
+    interval: 3600
+    path: ./provider1.yaml
+    health-check:
+      enable: true
+      interval: 600
+      url: http://www.gstatic.com/generate_204
+  test:
+    type: file
+    path: /test.yaml
+    health-check:
+      enable: true
+      interval: 36000
+      url: http://www.gstatic.com/generate_204
 
 rules:
 #  - DOMAIN-SUFFIX,163.com,DIRECT

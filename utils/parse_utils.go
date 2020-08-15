@@ -113,7 +113,7 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 				proxyMap["cipher"] = "auto"
 				proxyMap["uuid"] = vmessProxyMap["id"]
 				proxyMap["alterId"] = alertId
-				if vmessProxyMap["tls"] != nil {
+				if vmessProxyMap["tls"] != nil && vmessProxyMap["tls"] != "" {
 					proxyMap["tls"] = true
 				}
 				proxyMap["network"] = vmessProxyMap["net"]

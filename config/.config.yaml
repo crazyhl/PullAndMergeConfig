@@ -41,6 +41,11 @@ socks-port: 7891
 # HTTP(S) and SOCKS5 server on the same port
 # mixed-port: 7890
 
+# authentication of local SOCKS5/HTTP(S) server
+# authentication:
+#  - "user1:pass1"
+#  - "user2:pass2"
+
 # 允许局域网的连接（可用来共享代理）
 allow-lan: false
 # bind-address: "*"
@@ -161,24 +166,33 @@ proxy-groups:
 #    url: 'http://www.gstatic.com/generate_204'
 #    interval: 300
 
-# 这东西实际上作用是给 proxy-groups 用的，做健康检查啥的
+# 服务器节点订阅
 proxy-providers:
-  provider1:
-    type: http
-    url: "url"
-    interval: 3600
-    path: ./provider1.yaml
-    health-check:
-      enable: true
-      interval: 600
-      url: http://www.gstatic.com/generate_204
-  test:
-    type: file
-    path: /test.yaml
-    health-check:
-      enable: true
-      interval: 36000
-      url: http://www.gstatic.com/generate_204
+# name: # Provider 名称
+#   type: http # http 或 file
+#   path: # 文件路径
+#   url: # 只有当类型为 HTTP 时才可用，您不需要在本地空间中创建新文件。
+#   interval: # 自动更新间隔，仅在类型为 HTTP 时可用
+#   health-check: # 健康检查选项从此处开始
+#     enable:
+#     url:
+#     interval:
+
+#
+# 「url」参数填写订阅链接
+#
+# 订阅链接可以使用 API 进行转换，如：https://sub.dler.io/
+#
+# 1.模式选择「进阶模式」 2.填写订阅链接 3.勾选「输出为 Node List」 4.「生成订阅链接」
+#
+
+rule-providers:
+# name: # Provider 名称
+#   type: http # http 或 file
+#   behavior: classical # 或 ipcidr、domain
+#   path: # 文件路径
+#   url: # 只有当类型为 HTTP 时才可用，您不需要在本地空间中创建新文件。
+#   interval: # 自动更新间隔，仅在类型为 HTTP 时可用
 
 rules:
 #  - DOMAIN-SUFFIX,163.com,DIRECT

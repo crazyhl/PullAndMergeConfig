@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"parseAndCombineMyClashRules/concurrent_map"
 	"parseAndCombineMyClashRules/model"
 	"parseAndCombineMyClashRules/utils"
 	"path/filepath"
@@ -125,32 +125,77 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 	// 多线程获取订阅
 	waitGroup := sync.WaitGroup{}
 	waitGroup.Add(pullProxySourceMapLength)
-	proxyMap := concurrent_map.New()
-	proxyGroupMap := concurrent_map.New()
+	var proxyArr []map[interface{}]interface{}
+	var proxyGroupArr []map[interface{}]interface{}
+	var proxyNameArr []interface{}
 	for _, proxySource := range pullProxySourceMap {
 		go func(proxySource interface{}) {
+			defer waitGroup.Done()
 			proxySourceMap := proxySource.(map[interface{}]interface{})
 			// 获取订阅
-			httpResponse, httpRequestErr := http.Get(proxySourceMap["url"].(string))
+			httpResponseBytes, httpRequestErr := utils.HttpGet(proxySourceMap["url"].(string))
 			if httpRequestErr != nil {
 				log.Printf(
-					"请求url: %s，请求IP: %s, 订阅地址: %s, 报错内容：%v\n，没有获取到订阅地址",
+					"请求url: %s，请求IP: %s, 订阅地址: %s, 报错内容：%v\n，通过订阅地址获取内容失败",
 					r.URL,
 					utils.GetRequestIp(r),
 					proxySourceMap["url"].(string),
 					httpRequestErr.Error(),
 				)
 			}
-			fmt.Println(httpResponse)
-			// 插入到自定义组
-			proxyGroupMap.Set(proxySourceMap["name"].(string), nil)
-			fmt.Println(proxySourceMap["name"])
-			waitGroup.Done()
+			filterProxyName := userConfigMap["filter-proxy-name"]
+			var filterProxyNameArr []interface{}
+			if filterProxyName != nil {
+				filterProxyNameArr = filterProxyName.([]interface{})
+			}
+
+			filterProxyServer := userConfigMap["filter-proxy-server"]
+			var filterProxyServerArr []interface{}
+			if filterProxyServer != nil {
+				filterProxyServerArr = filterProxyServer.([]interface{})
+			}
+
+			decodeBase64Proxy, decodeBase64ProxyErr := base64.URLEncoding.DecodeString(string(httpResponseBytes))
+			if decodeBase64ProxyErr != nil {
+				// 不是 base64 ,解析yaml
+
+				yamlProxyServerArr, yamlProxyServerErr := utils.ParseYamlProxy(
+					httpResponseBytes,
+					filterProxyNameArr,
+					filterProxyServerArr,
+				)
+				if yamlProxyServerErr != nil {
+					log.Printf(
+						"请求url: %s，请求IP: %s, 订阅地址: %s\n，解析base64 和 yaml 全部失败",
+						r.URL,
+						utils.GetRequestIp(r),
+						proxySourceMap["url"].(string),
+					)
+				}
+				proxyGroupMap, tempProxyNameArr := generateGroupAndProxyNameArr(yamlProxyServerArr, proxySourceMap["name"])
+				proxyGroupArr = append(proxyGroupArr, proxyGroupMap)
+				proxyArr = append(proxyArr, yamlProxyServerArr...)
+				proxyNameArr = append(proxyNameArr, tempProxyNameArr...)
+				fmt.Println(proxySourceMap["name"])
+				return
+			}
+			//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
+			base64ProxyServerArr, base64ProxyServerErr := utils.ParseBase64Proxy(
+				decodeBase64Proxy,
+				filterProxyNameArr,
+				filterProxyServerArr,
+			)
+			if base64ProxyServerErr != nil {
+				return
+			}
+
+			proxyGroupMap, tempProxyNameArr := generateGroupAndProxyNameArr(base64ProxyServerArr, proxySourceMap["name"])
+			proxyGroupArr = append(proxyGroupArr, proxyGroupMap)
+			proxyArr = append(proxyArr, base64ProxyServerArr...)
+			proxyNameArr = append(proxyNameArr, tempProxyNameArr...)
 		}(proxySource)
 	}
 	waitGroup.Wait()
-	fmt.Println(proxyGroupMap.Map)
-	fmt.Println(proxyMap.Map)
 	// 构造一些前置的参数
 	outputConfig := model.OutputConfig{}
 
@@ -194,55 +239,25 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 
 	outputConfig.RuleProviders = getConfigFieldMergeValueMap("rule-providers", userConfigMap, baseRuleMap)
 	outputConfig.ProxyProviders = getConfigFieldMergeValueMap("proxy-providers", userConfigMap, baseRuleMap)
+	// 构造 proxy
+	outputConfig.Proxies = proxyArr
+	// 构造 proxyGroup
+	var outputProxyGroupMap []map[interface{}]interface{}
+	// 加入上面几组订阅的单独group
+	outputProxyGroupMap = append(outputProxyGroupMap, proxyGroupArr...)
+	userConfigProxyGroups := userConfigMap["proxy-groups"]
+	if userConfigProxyGroups != nil {
+		userConfigProxyGroupMapArr := generateProxyNameToGroup(userConfigProxyGroups, proxyNameArr)
+		outputProxyGroupMap = append(outputProxyGroupMap, userConfigProxyGroupMapArr...)
+	}
+	baseRuleProxyGroups := baseRuleMap["proxy-groups"]
+	if baseRuleProxyGroups != nil {
+		baseRuleProxyGroupMapArr := generateProxyNameToGroup(baseRuleProxyGroups.([]interface{}), proxyNameArr)
+		outputProxyGroupMap = append(outputProxyGroupMap, baseRuleProxyGroupMapArr...)
+	}
 
-	//
-	//// 规则获取完成后多线程拉取用户订阅
-	//pullProxySourceCunt := len(customConfig.PullProxySource)
-	//wg := sync.WaitGroup{}
-	//wg.Add(pullProxySourceCunt)
-	//proxyArr := concurrent_map.New()
-	//for i := 0; i < pullProxySourceCunt; i++ {
-	//	go func(source model.PullProxySource) {
-	//		defer wg.Done()
-	//		proxyArr.Set(source.Name, nil)
-	//		proxyBody, proxyErr := utils.HttpGet(source.Url)
-	//		if proxyErr != nil {
-	//			return
-	//		}
-	//
-	//		decodeProxy, decodeProxyErr := base64.URLEncoding.DecodeString(string(proxyBody))
-	//		if decodeProxyErr != nil {
-	//			//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息不是 base64 文件，尝试用yaml解析")
-	//			yamlProxyArr, yamlProxyErr := utils.ParseYamlProxy(proxyBody, customConfig.FilterProxyName, customConfig.FilterProxyServer)
-	//			if yamlProxyErr != nil {
-	//				//_, _ = hiMagenta.Println(source.Name + yamlProxyErr.Error())
-	//				return
-	//			}
-	//			proxyArr.Set(source.Name, yamlProxyArr)
-	//			//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， yaml 格式。")
-	//			return
-	//		}
-	//		//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
-	//		base64ProxyServerArr, base64ProxyServerErr := utils.ParseBase64Proxy(decodeProxy, customConfig.FilterProxyName, customConfig.FilterProxyServer)
-	//		if base64ProxyServerErr != nil {
-	//			//_, _ = hiMagenta.Println(source.Name + base64ProxyServerErr.Error())
-	//			return
-	//		}
-	//		proxyArr.Set(source.Name, base64ProxyServerArr)
-	//		//_, _ = hiMagenta.Println(source.Name + "获取节点信息成功， base64 格式。")
-	//		return
-	//	}(customConfig.PullProxySource[i])
-	//}
-	//wg.Wait()
-	//// 写出规则文件
-	//if configBaseRule.Name == "Hackl0us" {
-	//	baseRule := base_rule.Hackl0us{Rule: readyToWriteRule}
-	//	readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
-	//} else if configBaseRule.Name == "ConnersHua" {
-	//	baseRule := base_rule.ConnersHua{Rule: readyToWriteRule}
-	//	readyToWriteRule = my_interface.MergeBaseRule(baseRule, customConfig, proxyArr.Map)
-	//}
-	//
+	outputConfig.ProxyGroups = outputProxyGroupMap
+
 	marshalRule, _ := yaml.Marshal(&outputConfig)
 	fmt.Fprintln(w, string(marshalRule))
 }
@@ -286,4 +301,35 @@ func getConfigFieldMergeValueMap(fieldName string, userConfigMap map[string]inte
 		}
 	}
 	return valueMap
+}
+
+// 生成 proxyGroup 并且返回该组的 proxy 名称
+func generateGroupAndProxyNameArr(base64ProxyServerArr []map[interface{}]interface{}, proxySourceName interface{}) (map[interface{}]interface{}, []interface{}) {
+	var tempProxyNameArr []interface{}
+	for mapIndex := range base64ProxyServerArr {
+		tempProxyNameArr = append(tempProxyNameArr, base64ProxyServerArr[mapIndex]["name"])
+	}
+	// 构造一个 group
+	proxyGroupMap := make(map[interface{}]interface{})
+	proxyGroupMap["name"] = proxySourceName
+	proxyGroupMap["type"] = "select"
+	proxyGroupMap["proxies"] = tempProxyNameArr
+
+	return proxyGroupMap, tempProxyNameArr
+}
+
+// 把 ProxyName数组 插入到 group 中
+func generateProxyNameToGroup(proxyGroups interface{}, proxyNameArr []interface{}) []map[interface{}]interface{} {
+	// 遍历 判定是否包含use 如果没有就插入 proxies
+
+	var outputProxyGroupMap []map[interface{}]interface{}
+	for _, userConfigProxyGroup := range proxyGroups.([]interface{}) {
+		userConfigProxyGroupMap := userConfigProxyGroup.(map[interface{}]interface{})
+		if userConfigProxyGroupMap["use"] == nil {
+			userConfigProxyGroupMap["proxies"] = proxyNameArr
+		}
+
+		outputProxyGroupMap = append(outputProxyGroupMap, userConfigProxyGroupMap)
+	}
+	return outputProxyGroupMap
 }

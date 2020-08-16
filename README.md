@@ -16,7 +16,6 @@
 * [支持解析的代理规则](#支持解析的代理规则)
 * [遇到无法解析](#遇到无法解析)
 * [支持的基础规则](#支持的基础规则)
-* [未来想要做的](#未来想要做的)
 * [配置文件说明](#配置文件说明)
 * [使用方法](#使用方法)
 * [特别说明](#特别说明)
@@ -38,15 +37,7 @@
 
 ### 支持的基础规则
 - [x] [Hackl0us](https://github.com/Hackl0us/SS-Rule-Snippet)
-- [x] [ConnersHua](https://github.com/ConnersHua/Profiles) 这个目前只支持了 Pro 的规则，回国规则不想支持了，毕竟我想大部分都是要出去的，而不是要进来
-- [ ] [lhie1](https://github.com/lhie1/Rules)
-
----
-
-### 未来想要做的
-
-- 支持更多基础规则
-- 支持解析更多格式的代理文件
+- [ ] [ConnersHua](https://github.com/ConnersHua/Profiles) 由于这个规则修改后用了太多的 core feature ，我在 mac 上没法测试，所以暂时没法测试是否有效。
 
 ---
 
@@ -79,4 +70,3 @@
 
 - [Hackl0us](https://github.com/Hackl0us)
 - [ConnersHua](https://github.com/ConnersHua)
-- [lhie1](https://github.com/lhie1)

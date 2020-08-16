@@ -176,7 +176,6 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 				proxyGroupArr = append(proxyGroupArr, proxyGroupMap)
 				proxyArr = append(proxyArr, yamlProxyServerArr...)
 				proxyNameArr = append(proxyNameArr, tempProxyNameArr...)
-				fmt.Println(proxySourceMap["name"])
 				return
 			}
 			//_, _ = hiMagenta.Println(source.Name + "订阅 Proxy 信息是 base64 文件，尝试用 base64 解析")
@@ -238,21 +237,39 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 	outputConfig.Rules = getConfigFieldMergeValueArr("rules", userConfigMap, baseRuleMap)
 
 	outputConfig.RuleProviders = getConfigFieldMergeValueMap("rule-providers", userConfigMap, baseRuleMap)
+	// proxy providers
+	filterProxyProvier := userConfigMap["filter-proxy-providers"]
+	var filterProxyProviderArr []interface{}
+	if filterProxyProvier != nil {
+		filterProxyProviderArr = filterProxyProvier.([]interface{})
+	}
 	outputConfig.ProxyProviders = getConfigFieldMergeValueMap("proxy-providers", userConfigMap, baseRuleMap)
+	for providerName := range outputConfig.ProxyProviders {
+		for _, proxyProvider := range filterProxyProviderArr {
+			if providerName == proxyProvider {
+				delete(outputConfig.ProxyProviders, providerName)
+			}
+		}
+	}
 	// 构造 proxy
 	outputConfig.Proxies = proxyArr
 	// 构造 proxyGroup
+	filterProxyGroup := userConfigMap["filter-proxy-groups"]
+	var filterProxyGroupArr []interface{}
+	if filterProxyGroup != nil {
+		filterProxyGroupArr = filterProxyGroup.([]interface{})
+	}
 	var outputProxyGroupMap []map[interface{}]interface{}
 	// 加入上面几组订阅的单独group
 	outputProxyGroupMap = append(outputProxyGroupMap, proxyGroupArr...)
 	userConfigProxyGroups := userConfigMap["proxy-groups"]
 	if userConfigProxyGroups != nil {
-		userConfigProxyGroupMapArr := generateProxyNameToGroup(userConfigProxyGroups, proxyNameArr)
+		userConfigProxyGroupMapArr := generateProxyNameToGroup(userConfigProxyGroups, proxyNameArr, filterProxyGroupArr)
 		outputProxyGroupMap = append(outputProxyGroupMap, userConfigProxyGroupMapArr...)
 	}
 	baseRuleProxyGroups := baseRuleMap["proxy-groups"]
 	if baseRuleProxyGroups != nil {
-		baseRuleProxyGroupMapArr := generateProxyNameToGroup(baseRuleProxyGroups.([]interface{}), proxyNameArr)
+		baseRuleProxyGroupMapArr := generateProxyNameToGroup(baseRuleProxyGroups.([]interface{}), proxyNameArr, filterProxyGroupArr)
 		outputProxyGroupMap = append(outputProxyGroupMap, baseRuleProxyGroupMapArr...)
 	}
 
@@ -319,17 +336,23 @@ func generateGroupAndProxyNameArr(base64ProxyServerArr []map[interface{}]interfa
 }
 
 // 把 ProxyName数组 插入到 group 中
-func generateProxyNameToGroup(proxyGroups interface{}, proxyNameArr []interface{}) []map[interface{}]interface{} {
+func generateProxyNameToGroup(proxyGroups interface{}, proxyNameArr []interface{}, filterProxyGroupArr []interface{}) []map[interface{}]interface{} {
 	// 遍历 判定是否包含use 如果没有就插入 proxies
-
 	var outputProxyGroupMap []map[interface{}]interface{}
-	for _, userConfigProxyGroup := range proxyGroups.([]interface{}) {
-		userConfigProxyGroupMap := userConfigProxyGroup.(map[interface{}]interface{})
-		if userConfigProxyGroupMap["use"] == nil {
-			userConfigProxyGroupMap["proxies"] = proxyNameArr
+filterStart:
+	for _, proxyGroup := range proxyGroups.([]interface{}) {
+		proxyGroupMap := proxyGroup.(map[interface{}]interface{})
+		for _, filterName := range filterProxyGroupArr {
+			if filterName == proxyGroupMap["name"] {
+				continue filterStart
+			}
 		}
 
-		outputProxyGroupMap = append(outputProxyGroupMap, userConfigProxyGroupMap)
+		if proxyGroupMap["use"] == nil {
+			proxyGroupMap["proxies"] = proxyNameArr
+		}
+
+		outputProxyGroupMap = append(outputProxyGroupMap, proxyGroupMap)
 	}
 	return outputProxyGroupMap
 }

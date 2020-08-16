@@ -18,6 +18,14 @@ filter-proxy-name:
 filter-proxy-server:
 #  - "server"
 
+# 过滤的 proxy-providers
+filter-proxy-providers:
+#  - "server"
+
+# 过滤的 proxy-groups
+filter-proxy-groups:
+#  - "server"
+
 # 拉取代理源
 # 这个就是你的订阅地址，会从这个地址提取代理信息添加到上面的基础规则源里面
 

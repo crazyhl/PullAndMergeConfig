@@ -270,6 +270,18 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 	baseRuleProxyGroups := baseRuleMap["proxy-groups"]
 	if baseRuleProxyGroups != nil {
 		baseRuleProxyGroupMapArr := generateProxyNameToGroup(baseRuleProxyGroups.([]interface{}), proxyNameArr, filterProxyGroupArr)
+		// 重新整理一下需要把一些 group name 加入到 select 组中
+		var noneSelectGroupName []interface{}
+		for _, proxyGroupMap := range baseRuleProxyGroupMapArr {
+			if proxyGroupMap["type"] != "select" {
+				noneSelectGroupName = append(noneSelectGroupName, proxyGroupMap["name"])
+			}
+		}
+		for idx, proxyGroupMap := range baseRuleProxyGroupMapArr {
+			if proxyGroupMap["type"] == "select" {
+				baseRuleProxyGroupMapArr[idx]["proxies"] = append(noneSelectGroupName, baseRuleProxyGroupMapArr[idx]["proxies"].([]interface{})...)
+			}
+		}
 		outputProxyGroupMap = append(outputProxyGroupMap, baseRuleProxyGroupMapArr...)
 	}
 

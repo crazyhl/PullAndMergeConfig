@@ -75,7 +75,14 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 					fmt.Println(unmarshalVmessProxyErr)
 					return nil, unmarshalVmessProxyErr
 				}
-				alertId, _ := strconv.Atoi(vmessProxyMap["aid"].(string))
+				alertId := 0
+				switch vmessProxyMap["aid"].(type) {
+				case float64:
+					alertId = int(vmessProxyMap["aid"].(float64))
+				case string:
+					alertId, _ = strconv.Atoi(vmessProxyMap["aid"].(string))
+				}
+
 				proxyName := vmessProxyMap["ps"].(string)
 				for {
 					contains := proxyNameSet.Contains(proxyName)

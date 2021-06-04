@@ -64,6 +64,7 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 	proxyNameSet.Clear()
 	// 遍历分割的base 64字符串
 	for _, proxyStr := range proxyStrArr {
+		proxyStr = strings.Trim(proxyStr, "\r")
 		// 判断是否已vmess开头，目前仅支持vmess
 		if strings.HasPrefix(proxyStr, "vmess://") {
 			proxyStr = proxyStr[8:]

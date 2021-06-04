@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"net/url"
 	"parseAndCombineMyClashRules/my_set"
 	"strconv"
 	"strings"
@@ -128,6 +129,21 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 				proxyWsHeaders := make(map[interface{}]interface{})
 				proxyWsHeaders["Host"] = vmessProxyMap["host"]
 				proxyMap["ws-headers"] = proxyWsHeaders
+				proxyArr = append(proxyArr, proxyMap)
+			}
+		} else if strings.HasPrefix(proxyStr, "trojan://") {
+			urlParseInfo, urlParseErr := url.Parse(proxyStr)
+			if urlParseErr == nil {
+				proxyMap := make(map[interface{}]interface{})
+				proxyMap["name"] = urlParseInfo.Fragment
+				proxyMap["type"] = "trojan"
+				proxyMap["server"] = urlParseInfo.Hostname()
+				proxyMap["port"] = urlParseInfo.Port()
+				proxyMap["password"] = urlParseInfo.User.String()
+				proxyMap["udp"] = true
+				if sni, ok := urlParseInfo.Query()["sni"]; ok {
+					proxyMap["sni"] = sni[0]
+				}
 				proxyArr = append(proxyArr, proxyMap)
 			}
 		}

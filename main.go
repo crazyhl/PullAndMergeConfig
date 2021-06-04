@@ -157,24 +157,41 @@ func parseRule(w http.ResponseWriter, r *http.Request) {
 
 			decodeBase64Proxy, decodeBase64ProxyErr := base64.URLEncoding.DecodeString(string(httpResponseBytes))
 			if decodeBase64ProxyErr != nil {
+				// 在使用另一个base64 解析
+				decodeStdBase64Proxy, decodeStdBase64ProxyErr := base64.StdEncoding.DecodeString(string(httpResponseBytes))
+				if decodeStdBase64ProxyErr != nil {
+					yamlProxyServerArr, yamlProxyServerErr := utils.ParseYamlProxy(
+						httpResponseBytes,
+						filterProxyNameArr,
+						filterProxyServerArr,
+					)
+					if yamlProxyServerErr != nil {
+						log.Printf(
+							"请求url: %s，请求IP: %s, 订阅地址: %s\n，解析base64 和 yaml 全部失败",
+							r.URL,
+							utils.GetRequestIp(r),
+							proxySourceMap["url"].(string),
+						)
+					}
+					proxyGroupMap, tempProxyNameArr := generateGroupAndProxyNameArr(yamlProxyServerArr, proxySourceMap["name"])
+					proxyGroupArr = append(proxyGroupArr, proxyGroupMap)
+					proxyArr = append(proxyArr, yamlProxyServerArr...)
+					proxyNameArr = append(proxyNameArr, tempProxyNameArr...)
+					return
+				}
 				// 不是 base64 ,解析yaml
-
-				yamlProxyServerArr, yamlProxyServerErr := utils.ParseYamlProxy(
-					httpResponseBytes,
+				base64ProxyServerArr, base64ProxyServerErr := utils.ParseBase64Proxy(
+					decodeStdBase64Proxy,
 					filterProxyNameArr,
 					filterProxyServerArr,
 				)
-				if yamlProxyServerErr != nil {
-					log.Printf(
-						"请求url: %s，请求IP: %s, 订阅地址: %s\n，解析base64 和 yaml 全部失败",
-						r.URL,
-						utils.GetRequestIp(r),
-						proxySourceMap["url"].(string),
-					)
+				if base64ProxyServerErr != nil {
+					return
 				}
-				proxyGroupMap, tempProxyNameArr := generateGroupAndProxyNameArr(yamlProxyServerArr, proxySourceMap["name"])
+
+				proxyGroupMap, tempProxyNameArr := generateGroupAndProxyNameArr(base64ProxyServerArr, proxySourceMap["name"])
 				proxyGroupArr = append(proxyGroupArr, proxyGroupMap)
-				proxyArr = append(proxyArr, yamlProxyServerArr...)
+				proxyArr = append(proxyArr, base64ProxyServerArr...)
 				proxyNameArr = append(proxyNameArr, tempProxyNameArr...)
 				return
 			}

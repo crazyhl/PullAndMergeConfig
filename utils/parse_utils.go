@@ -68,7 +68,7 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 		// 判断是否已vmess开头，目前仅支持vmess
 		if strings.HasPrefix(proxyStr, "vmess://") {
 			proxyStr = proxyStr[8:]
-			vmessProxy, vmessProxyErr := base64.URLEncoding.DecodeString(proxyStr)
+			vmessProxy, vmessProxyErr := base64.RawURLEncoding.DecodeString(proxyStr)
 
 			if vmessProxyErr == nil {
 				vmessProxyMap := make(map[string]interface{})
@@ -95,25 +95,6 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 						break
 					}
 				}
-				//proxyArr = append(proxyArr, model.Proxy{
-				//	Name:           proxyName,
-				//	Type:           "vmess",
-				//	Server:         vmessProxyModel.Server,
-				//	Port:           vmessProxyModel.Port,
-				//	Cipher:         "auto",
-				//	Uuid:           vmessProxyModel.Uuid,
-				//	AlterId:        alertId,
-				//	Tls:            vmessProxyModel.Tls != "",
-				//	SkipCertVerify: vmessProxyModel.Tls != "",
-				//	Network:        vmessProxyModel.Network,
-				//	WsPath:         vmessProxyModel.WsPath,
-				//	WsHeaders: yaml.MapSlice{
-				//		yaml.MapItem{
-				//			Key:   "Host",
-				//			Value: vmessProxyModel.Host,
-				//		},
-				//	},
-				//})
 				proxyMap := make(map[interface{}]interface{})
 				proxyMap["name"] = proxyName
 				proxyMap["type"] = "vmess"
@@ -146,6 +127,24 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 					proxyMap["sni"] = sni[0]
 				}
 				proxyArr = append(proxyArr, proxyMap)
+			}
+		} else if strings.HasPrefix(proxyStr, "ss://") {
+			urlParseInfo, urlParseErr := url.Parse(proxyStr)
+			if urlParseErr == nil {
+				vmessProxy, vmessProxyErr := base64.RawURLEncoding.DecodeString(urlParseInfo.User.String())
+				if vmessProxyErr == nil {
+					methodAndPassword := strings.Split(string(vmessProxy), ":")
+					proxyMap := make(map[interface{}]interface{})
+					proxyMap["name"] = urlParseInfo.Fragment
+					proxyMap["type"] = "ss"
+					proxyMap["server"] = urlParseInfo.Hostname()
+					proxyMap["port"] = urlParseInfo.Port()
+					proxyMap["password"] = methodAndPassword[1]
+					proxyMap["cipher"] = methodAndPassword[0]
+
+					proxyArr = append(proxyArr, proxyMap)
+				}
+
 			}
 		}
 	}

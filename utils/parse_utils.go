@@ -12,6 +12,24 @@ import (
 	"strings"
 )
 
+func GetBase64Decode(s string) []byte {
+	decodeBase64Proxy, decodeBase64ProxyErr := base64.RawURLEncoding.DecodeString(s)
+	if decodeBase64ProxyErr != nil {
+		decodeBase64Proxy, decodeBase64ProxyErr = base64.RawStdEncoding.DecodeString(s)
+		if decodeBase64ProxyErr != nil {
+			decodeBase64Proxy, decodeBase64ProxyErr = base64.URLEncoding.DecodeString(s)
+			if decodeBase64ProxyErr != nil {
+				decodeBase64Proxy, decodeBase64ProxyErr = base64.StdEncoding.DecodeString(s)
+				if decodeBase64ProxyErr != nil {
+					return nil
+				}
+			}
+		}
+	}
+
+	return decodeBase64Proxy
+}
+
 // 解析 base64 格式的服务器信息
 func ParseBase64Proxy(proxyBody []byte, filterProxyName []interface{}, filterProxyServer []interface{}) ([]map[interface{}]interface{}, error) {
 	// base64 解析失败了，尝试解析 yaml

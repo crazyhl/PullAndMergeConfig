@@ -86,9 +86,9 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 		// 判断是否已vmess开头，目前仅支持vmess
 		if strings.HasPrefix(proxyStr, "vmess://") {
 			proxyStr = proxyStr[8:]
-			vmessProxy, vmessProxyErr := base64.RawURLEncoding.DecodeString(proxyStr)
+			vmessProxy := GetBase64Decode(proxyStr)
 
-			if vmessProxyErr == nil {
+			if vmessProxy != nil {
 				vmessProxyMap := make(map[string]interface{})
 				unmarshalVmessProxyErr := json.Unmarshal(vmessProxy, &vmessProxyMap)
 				if unmarshalVmessProxyErr != nil {
@@ -149,8 +149,8 @@ func parseBase64ProxyArr(base64ProxyStr []byte) ([]map[interface{}]interface{}, 
 		} else if strings.HasPrefix(proxyStr, "ss://") {
 			urlParseInfo, urlParseErr := url.Parse(proxyStr)
 			if urlParseErr == nil {
-				vmessProxy, vmessProxyErr := base64.RawURLEncoding.DecodeString(urlParseInfo.User.String())
-				if vmessProxyErr == nil {
+				vmessProxy := GetBase64Decode(urlParseInfo.User.String())
+				if vmessProxy != nil {
 					methodAndPassword := strings.Split(string(vmessProxy), ":")
 					proxyMap := make(map[interface{}]interface{})
 					proxyMap["name"] = urlParseInfo.Fragment
